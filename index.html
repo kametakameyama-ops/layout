@@ -26,7 +26,7 @@ input[type=number]{width:64px}
 <select id="rs"><option value="90">回転90°</option><option value="45">45°</option><option value="15">15°</option><option value="0">なし</option></select>
 <button id="sty">線画</button></div>
 <div id="main">
-<div class="side"><h6>オブジェクトを追加</h6><div class="row" id="add"></div></div>
+<div class="side"><h6>オブジェクトを追加</h6><div class="row" id="add"></div><h6>新規の人物の身長</h6><div><input id="nh" type="number" value="170" step="1" min="30" max="300">cm</div></div>
 <div id="v"><div id="fr"></div></div>
 <div class="side r">
 <h6>カメラ</h6><div class="row" id="ln"></div><h6>目線</h6><div class="row" id="ey"></div>
@@ -35,8 +35,8 @@ input[type=number]{width:64px}
 <div id="pv"></div>
 <h6>選択中のオブジェクト</h6>
 <div class="row"><button id="m0" class="on">移動</button><button id="m1">回転</button><button id="m2">拡縮</button></div>
-<div class="row"><button id="sp">軸:ワールド</button><button id="dp">複製</button><button id="de">削除</button><button id="gd">接地</button></div>
-<div id="hh" style="display:none">人物の身長 <input id="hi" type="number" value="170" step="1">cm</div>
+<div style="font-size:11px;opacity:.7">矢印: 赤=左右 青=上下 緑=前後</div><div class="row"><button id="sp">軸:ワールド</button><button id="dp">複製</button><button id="de">削除</button><button id="gd">接地</button></div>
+<div id="hh" style="display:none">身長(立位換算) <button id="hm">−</button><input id="hi" type="number" value="170" step="1" min="30" max="300"><button id="hp">＋</button>cm</div>
 </div></div>
 <div id="md"><img id="mi"><div>長押しで保存／タップで閉じる</div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -50,20 +50,24 @@ const C=new THREE.PerspectiveCamera(50,1,.1,500);C.filmGauge=36;
 const O=new THREE.OrbitControls(C,R.domElement);O.target.set(0,1,0);
 S.add(new THREE.HemisphereLight(0xffffff,0x888888,.9));const dl=new THREE.DirectionalLight(0xffffff,.6);dl.position.set(3,6,4);S.add(dl);
 const T=new THREE.TransformControls(C,R.domElement);T.setSpace('world');S.add(T);T.addEventListener('dragging-changed',e=>O.enabled=!e.value);
+function recolor(){const m={Y:0x2266ff,Z:0x22cc44,XY:0x22cc44,XZ:0x2266ff};T.traverse(o=>{if(o.material&&o.material.color&&m[o.name]!==undefined){o.material.color.setHex(m[o.name]);o.material._color=o.material.color.clone()}})}recolor();
 const stage=new THREE.Group(),objs=new THREE.Group();S.add(stage,objs);
-let line=true,grid,sel=null,cur=[4,4],step=.1,mm=35;
+const tv=new THREE.Vector3();
+function fade(){stage.children.forEach(m=>{const n=m.userData.n;if(!n)return;const out=tv.copy(C.position).sub(m.position).dot(n)<0,M=m.material;M.transparent=true;M.opacity=out?.07:1;M.depthWrite=!out;m.children.forEach(l=>{l.material.transparent=true;l.material.opacity=out?.15:1})})}
+let line=true,grid,sel=null,cur=[4,4],step=.1,mm=35,mode0='translate';
+function att(){sel?T.attach(mode0=='translate'?sel:sel.children[0]):T.detach()}
 const WH=new THREE.Color(1,1,1);
 function mat(c){return line?new THREE.MeshBasicMaterial({color:new THREE.Color(c).lerp(WH,.6),polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}):new THREE.MeshLambertMaterial({color:c})}
 function mk(geo,c,x,y,z){const m=new THREE.Mesh(geo,mat(c));m.userData.c=c;m.position.set(x,y,z);m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo,25),new THREE.LineBasicMaterial({color:0x222222})));return m}
 const box=(w,h,d,c,x,y,z)=>mk(new THREE.BoxGeometry(w,h,d),c,x,y,z);
 const G=(...a)=>{const g=new THREE.Group();a.forEach(m=>g.add(m));return g};
-function setStyle(){[stage,objs].forEach(g=>g.traverse(o=>{if(o.isMesh){o.material=mat(o.userData.c);o.children.forEach(l=>l.visible=line)}}))}
-function applyGrid(){step=parseFloat($('gs').value);if(grid)S.remove(grid);const s=Math.max(...cur);grid=new THREE.GridHelper(s,Math.min(200,Math.round(s/step)),0x999999,0xdddddd);grid.position.y=.005;S.add(grid);T.setTranslationSnap(step);T.setScaleSnap(.1)}
+function setStyle(){[stage,objs].forEach(g=>g.traverse(o=>{if(o.isMesh){o.material=mat(o.userData.c);o.children.forEach(l=>l.visible=line);if(o.userData.fl){o.material.transparent=true;o.material.opacity=.4;o.material.depthWrite=false}}}))}
+function applyGrid(){step=parseFloat($('gs').value);if(grid)S.remove(grid);const s=Math.max(...cur);grid=new THREE.GridHelper(s,Math.min(200,Math.round(s/step)),0x999999,0xdddddd);grid.position.y=.005;S.add(grid);T.setTranslationSnap(step);T.setScaleSnap(.01)}
 const ST={room:[4,4,2.6,.1],ldk:[7,5,2.6,.1],mansion:[12,9,4.5,.5],road:[30,30,0,1],forest:[30,30,0,1],ppl:[10,10,0,.5]};
 const FL=0x7fb35f,WL=0x888888;
 function setStage(n){stage.clear();const[W,D,H,g]=ST[n];cur=[W,D];
-stage.add(box(W,.02,D,FL,0,-.01,0));
-if(H)stage.add(box(W,H,.1,WL,0,H/2,-D/2),box(.1,H,D,WL,-W/2,H/2,0),box(.1,H,D,WL,W/2,H/2,0));
+const fl=box(W,.02,D,FL,0,-.01,0);fl.userData.fl=1;stage.add(fl);
+if(H)[[box(W,H,.1,WL,0,H/2,-D/2),0,1],[box(.1,H,D,WL,-W/2,H/2,0),1,0],[box(.1,H,D,WL,W/2,H/2,0),-1,0]].forEach(([m,x,z])=>{m.userData.n=new THREE.Vector3(x,0,z);stage.add(m)});
 if(n=='road'){stage.add(box(30,.03,5,0x666666,0,0,0));[[-8,-9],[0,-10],[9,-9],[-6,9],[8,9]].forEach(([x,z],i)=>{const h=6+i*2;stage.add(box(5+i%3*2,h,6,WL,x,h/2,z))})}
 if(n=='forest'){let s=7;const r=()=>(s=s*16807%2147483647)/2147483647;for(let i=0;i<30;i++){const x=(r()-.5)*28,z=(r()-.5)*28,h=3+r()*3;stage.add(mk(new THREE.CylinderGeometry(.15,.2,h*.4,8),0x8b6b4a,x,h*.2,z),mk(new THREE.ConeGeometry(1.2,h,10),0x2f8f4f,x,h*.4+h/2,z))}}
 $('gs').value=g;applyGrid();O.target.set(0,1,0);C.position.set(0,1.5,H?D/2+.8:8);O.update();setStyle()}
@@ -88,13 +92,16 @@ const P={
 'ドア':()=>G(box(.9,2,.05,W0,0,1,0)),
 'ビル':()=>G(box(6,12,6,W0,0,6,0)),
 '立ち人':()=>person(false),'座り人':()=>person(true)};
-Object.keys(P).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>{const g=P[k](),t=O.target;g.position.set(Math.round(t.x/step)*step,0,Math.round(t.z/step)*step);objs.add(g);setStyle();select(g)};$('add').appendChild(b)});
-function select(g){sel=g;g?T.attach(g):T.detach();const p=g&&g.userData.person;$('hh').style.display=p?'':'none';if(p)$('hi').value=Math.round(g.scale.y*170)}
-$('hi').oninput=()=>{const v=+$('hi').value;if(sel&&sel.userData.person&&v>20)sel.scale.setScalar(v/170)};
+Object.keys(P).forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>{const g0=P[k](),t=O.target,g=new THREE.Group();g.add(g0);g.userData.person=g0.userData.person;g.position.set(Math.round(t.x/step)*step,0,Math.round(t.z/step)*step);if(g.userData.person)g0.scale.setScalar((+$('nh').value||170)/171);objs.add(g);setStyle();select(g)};$('add').appendChild(b)});
+function select(g){sel=g;att();const p=g&&g.userData.person;$('hh').style.display=p?'':'none';if(p)$('hi').value=Math.round(g.children[0].scale.y*171);recolor()}
+$('hi').oninput=()=>{const v=+$('hi').value;if(sel&&sel.userData.person&&v>20)sel.children[0].scale.setScalar(v/171)}
+$('hm').onclick=()=>{$('hi').value=+$('hi').value-1;$('hi').oninput()};$('hp').onclick=()=>{$('hi').value=+$('hi').value+1;$('hi').oninput()};
+T.addEventListener('objectChange',()=>{if(sel&&sel.userData.person)$('hi').value=Math.round(sel.children[0].scale.y*171)});
+;
 const rc=new THREE.Raycaster();let dn=null;
 R.domElement.addEventListener('pointerdown',e=>dn=[e.clientX,e.clientY]);
 R.domElement.addEventListener('pointerup',e=>{if(!dn||T.axis||T.dragging)return;if(Math.hypot(e.clientX-dn[0],e.clientY-dn[1])>5)return;const r=R.domElement.getBoundingClientRect();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),C);const h=rc.intersectObjects(objs.children,true).find(x=>x.object.isMesh);let o=h&&h.object;while(o&&o.parent!==objs)o=o.parent;select(o||null)});
-['translate','rotate','scale'].forEach((s,i)=>{$('m'+i).onclick=()=>{T.setMode(s);[0,1,2].forEach(j=>$('m'+j).classList.toggle('on',j==i))}});
+['translate','rotate','scale'].forEach((s,i)=>{$('m'+i).onclick=()=>{T.setMode(s);mode0=s;att();[0,1,2].forEach(j=>$('m'+j).classList.toggle('on',j==i))}});
 $('sp').onclick=()=>{const w=T.space=='world';T.setSpace(w?'local':'world');$('sp').textContent=w?'軸:ローカル':'軸:ワールド'};
 $('dp').onclick=()=>{if(!sel)return;const c=sel.clone(true);c.position.x+=step*2;objs.add(c);select(c)};
 $('de').onclick=del;function del(){if(!sel)return;objs.remove(sel);select(null)}
@@ -119,5 +126,5 @@ function shot(f){T.visible=false;grid.visible=false;R.render(S,C);const p=R.getP
 $('md').onclick=()=>$('md').style.display='none';
 new ResizeObserver(layout).observe(V);
 setStage('room');buildPV();
-(function loop(){requestAnimationFrame(loop);R.render(S,C);const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
+(function loop(){requestAnimationFrame(loop);fade();R.render(S,C);const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
 </script></body></html>
