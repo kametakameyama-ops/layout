@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <!--
 © 2026 しゅうさく  All rights reserved.
@@ -55,7 +56,7 @@ details>.row,details>div{margin-bottom:6px}
 #md img{max-width:92%;max-height:72%;background:#fff}
 @media(max-width:760px){#main{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}.side{max-height:24vh;flex-direction:row;flex-wrap:wrap;border:0}#main .side:first-child{order:0}#ops{flex-basis:100%}#lp{flex-direction:column;flex-wrap:nowrap;max-height:36vh}}
 </style></head><body>
-<div class="bar"><b>漫画レイアウト3D</b><select id="st"><optgroup label="部屋"><option value="room">個室</option><option value="ldk">LDK</option><option value="mansion">豪邸の広間</option><option value="corridor">学校の廊下</option></optgroup><optgroup label="広い空間"><option value="road">道</option><option value="forest">森</option><option value="free">フリースペース</option></optgroup><option value="ppl">人物のみ</option></select><span id="gz">地面 <input id="gw" type="number" value="20" min="2" max="200" step="1">×<input id="gdp" type="number" value="20" min="2" max="200" step="1">m</span>
+<div class="bar"><b>漫画レイアウト3D</b><select id="st"><optgroup label="部屋"><option value="room">個室</option><option value="ldk">LDK</option><option value="mansion">豪邸の広間</option><option value="corridor">学校の廊下</option><option value="classroom">学校の教室</option></optgroup><optgroup label="広い空間"><option value="road">道</option><option value="forest">森</option><option value="free">フリースペース</option></optgroup><option value="ppl">人物のみ</option></select><span id="gz">地面 <input id="gw" type="number" value="20" min="2" max="200" step="1">×<input id="gdp" type="number" value="20" min="2" max="200" step="1">m</span>
 吸着<select id="gs"><option>0.1</option><option>0.25</option><option>0.5</option><option>1</option><option>5</option></select>m
 <select id="rs"><option value="90">回転90°</option><option value="45">45°</option><option value="15">15°</option><option value="0">なし</option></select>
 <button id="sty">線画</button><button id="un">取り消し</button><button id="rd">やり直し</button><button id="fsv">ファイル保存</button><button id="fld">ファイル読込</button><button id="fnw">新規</button><input type="file" id="ff" accept=".json,application/json" hidden><button id="cp" style="margin-left:auto;opacity:.75">© しゅうさく</button></div>
@@ -101,6 +102,17 @@ if(ok&&gl)return;var d=document.createElement('div');d.style.cssText='position:f
 d.textContent=ok?'このブラウザでは3D表示（WebGL）を使えません。別のブラウザでお試しください。':'必要なライブラリを読み込めませんでした。通信状況を確認して、ページを再読み込みしてください。';document.body.appendChild(d)})();</script>
 <script>
 const $=id=>document.getElementById(id),V=$('v'),rad=Math.PI/180;
+// ページ内ダイアログ（埋め込み表示などで confirm/alert/prompt が使えない環境でも動くようにする）
+function dlg(msg,o={}){return new Promise(res=>{const w=document.createElement('div');w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;display:flex;align-items:center;justify-content:center;padding:16px';
+const b=document.createElement('div');b.style.cssText='background:var(--pn);color:var(--fg);border:1px solid var(--bd);border-radius:10px;max-width:420px;width:100%;padding:16px;font-size:13px;line-height:1.7';
+const t=document.createElement('div');t.style.whiteSpace='pre-wrap';t.textContent=msg;b.appendChild(t);let inp=null;
+if(o.input){inp=document.createElement('input');inp.value=o.def||'';inp.style.cssText='width:100%;box-sizing:border-box;margin-top:8px';b.appendChild(inp)}
+const r=document.createElement('div');r.style.cssText='display:flex;gap:6px;justify-content:flex-end;margin-top:12px';
+const done=v=>{w.remove();res(v)};
+if(o.cancel){const c=document.createElement('button');c.textContent='キャンセル';c.onclick=()=>done(o.input?null:false);r.appendChild(c)}
+const k=document.createElement('button');k.textContent='OK';k.className='on';k.onclick=()=>done(o.input?inp.value:true);r.appendChild(k);b.appendChild(r);w.appendChild(b);document.body.appendChild(w);(inp||k).focus();
+if(inp)inp.onkeydown=e=>{if(e.key=='Enter')k.click()}})}
+const ask=m=>dlg(m,{cancel:1}),note=m=>{dlg(String(m))};
 const R=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});R.setPixelRatio(Math.min(devicePixelRatio,2));V.insertBefore(R.domElement,$('fr'));
 const S=new THREE.Scene();S.background=new THREE.Color(0xffffff);
 const C=new THREE.PerspectiveCamera(50,1,.1,500);C.filmGauge=36;
@@ -132,9 +144,9 @@ const box=(w,h,d,c,x,y,z)=>mk(new THREE.BoxGeometry(w,h,d),c,x,y,z);
 const G=(...a)=>{const g=new THREE.Group();a.forEach(m=>g.add(m));return g};
 function setStyle(){[stage,objs].forEach(g=>g.traverse(o=>{if(o.isMesh){if(o.userData.imp){o.material=line||!o._om?mat(0xdddddd):o._om;o.children.forEach(l=>l.visible=line);return}o.material=mat(o.userData.c);o.children.forEach(l=>l.visible=line);if(o.userData.fl){o.material.transparent=true;o.material.opacity=.4;o.material.depthWrite=false}}}))}
 function applyGrid(){step=parseFloat($('gs').value);if(grid){S.remove(grid);grid.geometry.dispose()}const[W,D]=cur;let s=step;while(Math.max(W,D)/s>200)s*=5;const p=[],ln=(a,b,c,d)=>p.push(a,0,b,c,0,d);for(let x=-W/2;x<=W/2+1e-6;x+=s)ln(x,-D/2,x,D/2);for(let z=-D/2;z<=D/2+1e-6;z+=s)ln(-W/2,z,W/2,z);ln(W/2,-D/2,W/2,D/2);ln(-W/2,D/2,W/2,D/2);const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.Float32BufferAttribute(p,3));grid=new THREE.LineSegments(gm,new THREE.LineBasicMaterial({color:0xbbbbbb}));grid.position.y=.005;S.add(grid);T.setTranslationSnap(step);T.setScaleSnap(.01)}
-const ST={room:[4,4,2.6,.1],ldk:[7,5,2.6,.1],mansion:[12,9,4.5,.5],road:[30,30,0,1],forest:[30,30,0,1],ppl:[10,10,0,.5],corridor:[18,2.7,3,.1],free:[20,20,0,.5]};
+const ST={room:[4,4,2.6,.1],ldk:[7,5,2.6,.1],mansion:[12,9,4.5,.5],road:[30,30,0,1],forest:[30,30,0,1],ppl:[10,10,0,.5],corridor:[18,2.7,3,.1],classroom:[9,7.5,3,.1],free:[20,20,0,.5]};
 const FL=0x7fb35f,WL=0x888888;
-const FLC={corridor:0xcfc3a8},CAM={corridor:[[-8.2,1.5,.2],[0,1.4,0]]};
+const FLC={corridor:0xcfc3a8,classroom:0xd8c39a},CAM={corridor:[[-8.2,1.5,.2],[0,1.4,0]],classroom:[[4.1,1.6,.3],[-3,1.3,.3]]};
 function mkFloor(n,W,D){stage.clear();const fl=box(W,.02,D,FLC[n]||FL,0,-.01,0);fl.userData.fl=1;stage.add(fl)}
 function buildCorridor(W,D,H){const put=(k,a,n,x,z)=>{const g=wrap(k,a,n,1);g.position.set(x,0,z);objs.add(g)};
 const dx=[-7.5,-1.8,1.8,7.5],wx=[0,1,2,3,4,5,6,7].map(i=>-W/2+1.125+2.25*i);
@@ -144,10 +156,25 @@ put('壁',[.1,H,D,WL],[1,0,0],-W/2,0);put('壁',[.1,H,D,WL],[-1,0,0],W/2,0);
 put('壁',[.6,H,.4,WL],[0,0,1],0,-D/2+.25);
 dx.forEach(x=>{put('引き戸',[1.8,2],[0,0,1],x,-D/2);put('クラスプレート',[.8,.22,2.3],[0,0,1],x,-D/2+.065)});
 wx.forEach(x=>put('窓',[1.8,1.5,.9],[0,0,-1],x,D/2))}
+// 教室: 廊下(18m)の左半分(x:-9〜0)の教室1つ分に対応。幅9m=廊下の教室1つ分、高さ3m、引き戸(1.8m)・窓(1.8×1.5m,高さ.9m,ピッチ2.25m)は廊下と同寸、位置も同じ
+function buildClassroom(W,D,H){const Y=new THREE.Vector3(0,1,0);
+const put=(k,a,n,x,z,deg,y)=>{const g=wrap(k,a,n,1);g.position.set(x,y||0,z);if(deg)g.children[0].quaternion.setFromAxisAngle(Y,deg*rad);objs.add(g)};
+const dx=[-3,2.7],wx=[-3.375,-1.125,1.125,3.375];
+put('壁',[.1,H,D,WL],[1,0,0],-W/2,0);put('壁',[.1,H,D,WL],[-1,0,0],W/2,0);
+put('開口壁',[W,H,.1,WL,wx.map(x=>[x,1.8,.9,2.4])],[0,0,-1],0,D/2);
+put('開口壁',[W,H,.1,WL,dx.map(x=>[x,1.9,0,2.05])],[0,0,1],0,-D/2);
+dx.forEach(x=>put('引き戸',[1.8,2],[0,0,1],x,-D/2));
+wx.forEach(x=>put('窓',[1.8,1.5,.9],[0,0,-1],x,D/2));
+const bx=-W/2+.05;
+put('黒板',[4.5,1.2,.9],[0,0,1],bx,0,90);
+put('教壇',[5,1,.15],null,bx,0,90);
+put('教卓',[1.2,.6,.74],null,bx+.6,0,90,.15);
+put('掃除用具ロッカー',[.9,.5,1.8],null,W/2-.3,-(D/2-.55),-90);
+[-1.8,-.6,.6,1.8].forEach(x=>[-2.4,-1.2,0,1.2,2.4].forEach(z=>{put('学習机',[],null,x,z,-90);put('学習椅子',[],null,x+.52,z,-90)}))}
 function setStage(n){curSt=n;[...objs.children].forEach(o=>{if(o.userData.gen)objs.remove(o)});select(null);let[W,D,H,g]=ST[n];if(n=='free'){W=gw;D=gd}cur=[W,D];
 mkFloor(n,W,D);
-if(H&&n!='corridor')[[W,H,.1,0,-D/2,[0,0,1]],[.1,H,D,-W/2,0,[1,0,0]],[.1,H,D,W/2,0,[-1,0,0]]].forEach(([w,h,d,x,z,nn])=>{const g=wrap('壁',[w,h,d,WL],nn,1);g.position.set(x,0,z);objs.add(g)});
-if(n=='corridor')buildCorridor(W,D,H);
+if(H&&n!='corridor'&&n!='classroom')[[W,H,.1,0,-D/2,[0,0,1]],[.1,H,D,-W/2,0,[1,0,0]],[.1,H,D,W/2,0,[-1,0,0]]].forEach(([w,h,d,x,z,nn])=>{const g=wrap('壁',[w,h,d,WL],nn,1);g.position.set(x,0,z);objs.add(g)});
+if(n=='corridor')buildCorridor(W,D,H);if(n=='classroom')buildClassroom(W,D,H);
 if(n=='road'){stage.add(box(30,.03,5,0x666666,0,0,0));[[-8,-9],[0,-10],[9,-9],[-6,9],[8,9]].forEach(([x,z],i)=>{const h=6+i*2,g=wrap('ビル',[5+i%3*2,h,6,WL],null,1);g.position.set(x,0,z);objs.add(g)})}
 if(n=='forest'){let s=7;const r=()=>(s=s*16807%2147483647)/2147483647;for(let i=0;i<30;i++){const x=(r()-.5)*28,z=(r()-.5)*28,h=3+r()*3;const g=wrap('木',[h],null,1);g.position.set(x,0,z);objs.add(g)}}
 $('gs').value=g;applyGrid();
@@ -184,6 +211,12 @@ a.push(box(.05,h,.12,0xaaaaaa,-w/2-.025,h/2,0),box(.05,h,.12,0xaaaaaa,w/2+.025,h
 '植え込み':(w=2,h=.9)=>G(box(w,.15,.7,0x999999,0,.075,0),box(w-.1,h-.35,.55,0x2f8f4f,0,.15+(h-.35)/2,0),...[-w/3,0,w/3].map(x=>mk(new THREE.SphereGeometry(.28,12,10),0x2f8f4f,x,h-.28,0))),
 '開口壁':(len=2,h=2.4,d=.1,c=W0,ops=[])=>{const a=[],pc=(x0,x1,y0,y1)=>{if(x1-x0>1e-4&&y1-y0>1e-4)a.push(box(x1-x0,y1-y0,d,c,(x0+x1)/2,(y0+y1)/2,0))};let cu=-len/2;[...ops].sort((p,q)=>p[0]-q[0]).forEach(([x,w,y0,y1])=>{pc(cu,x-w/2,0,h);pc(x-w/2,x+w/2,0,y0);pc(x-w/2,x+w/2,y1,h);cu=x+w/2});pc(cu,len/2,0,h);return G(...a)},
 'クラスプレート':(w=.8,h=.22,y=2.3)=>G(box(w,h,.03,0xf2f2e0,0,y,0)),
+'黒板':(w=4.5,h=1.2,y0=.9)=>G(box(w,h,.03,0x2f5a46,0,y0+h/2,.015),box(w+.08,.04,.05,W0,0,y0+h+.02,.025),box(.04,h,.05,W0,-w/2-.02,y0+h/2,.025),box(.04,h,.05,W0,w/2+.02,y0+h/2,.025),box(w,.03,.1,W0,0,y0-.015,.05)),
+'教壇':(w=5,d=1,h=.15)=>G(box(w,h,d,0xb8956a,0,h/2,d/2)),
+'教卓':(w=1.2,d=.6,h=.74)=>G(box(w,.04,d,0xc9a46a,0,h-.02,0),box(.4,h-.04,d-.04,W0,-w/2+.22,(h-.04)/2,0),box(.04,h-.04,d-.04,W0,w/2-.04,(h-.04)/2,0),box(w-.48,.44,.03,W0,.18,.48,d/2-.03),...[.58,.4,.22].map(y=>box(.2,.02,.02,0x444444,-w/2+.22,y,-d/2-.01))),
+'学習机':(w=.65,d=.45,h=.7)=>G(box(w,.03,d,0xe3c590,0,h-.015,0),box(w-.08,.14,d-.06,0xcfd2d6,0,h-.1,0),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,b])=>box(.03,h-.03,.03,0x888888,a*(w/2-.03),(h-.03)/2,b*(d/2-.03)))),
+'学習椅子':(h=.42)=>G(box(.38,.03,.38,0xe3c590,0,h-.015,0),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,b])=>box(.03,h-.03,.03,0x888888,a*.16,(h-.03)/2,b*.16)),box(.03,.3,.03,0x888888,-.15,h+.15,-.17),box(.03,.3,.03,0x888888,.15,h+.15,-.17),box(.34,.14,.025,0xe3c590,0,h+.2,-.185)),
+'掃除用具ロッカー':(w=.9,d=.5,h=1.8,c=0x8fa3b5)=>G(box(w,h,d,c,0,h/2,0),...[-1,1].flatMap(a=>[box(w/2-.03,h-.1,.02,0xa9bccb,a*w/4,h/2,d/2+.01),box(.03,.2,.03,0x444444,a*.05,h*.55,d/2+.03),box(.3,.02,.02,0x555555,a*w/4,h-.18,d/2+.025),box(.3,.02,.02,0x555555,a*w/4,h-.24,d/2+.025)])),
 '3Dモデル':(id)=>{const m=MODELS[id];if(!m||!m.tpl)return G(box(.5,.5,.5,0xcc6666,0,.25,0));const c=m.tpl.clone(true);c.traverse(o=>{if(o.isMesh)o._om=Array.isArray(o.material)?o.material.map(x=>x.clone()):o.material.clone()});return G(c)},
 '立ち人':()=>person(false),'座り人':()=>person(true)};
 const MODELS={};
@@ -216,10 +249,10 @@ $('mf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(!fs
 try{const files=[];for(const f of fs)files.push({name:f.name,buf:await f.arrayBuffer()});const main=files.find(f=>/\.(obj|fbx|glb|gltf|vrm)$/i.test(f.name));if(!main)throw new Error('obj / fbx / glb / vrm のファイルを選んでください');
 const id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);const mu=$('mu').value,u=mu=='auto'?(/\.fbx$/i.test(main.name)?.01:1):+mu;await regModel(id,{name:main.name,u,files});
 const t=O.target,g=wrap('3Dモデル',[id],null,false);g.position.set(Math.round(t.x/step)*step,0,Math.round(t.z/step)*step);objs.add(g);setStyle();select(g);commit();
-if(MODELS[id].tpl.userData.tri>300000)alert('ポリゴン数が多いため、動作が重くなる場合があります')}
-catch(x){alert('3Dファイルを読み込めませんでした: '+(x&&x.message||x))}
+if(MODELS[id].tpl.userData.tri>300000)note('ポリゴン数が多いため、動作が重くなる場合があります')}
+catch(x){note('3Dファイルを読み込めませんでした: '+(x&&x.message||x))}
 $('m3').disabled=false;$('m3').textContent='読込'};
-const CAT=[['基本図形',['立方体','球','円柱','円錐']],['構造',['壁','板','階段','ドア','引き戸','窓','ビル']],['家具',['テーブル','椅子','ベッド','棚','ソファ']],['屋外',['木','植え込み']],['人物',['立ち人','座り人']]];
+const CAT=[['基本図形',['立方体','球','円柱','円錐']],['構造',['壁','板','階段','ドア','引き戸','窓','ビル']],['家具',['テーブル','椅子','ベッド','棚','ソファ']],['屋外',['木','植え込み']],['学校',['黒板','教壇','教卓','学習机','学習椅子','掃除用具ロッカー']],['人物',['立ち人','座り人']]];
 function addObj(k){const g0=P[k](),t=O.target,g=new THREE.Group();g.add(g0);g.userData.person=g0.userData.person;g.userData.k=k;g.position.set(Math.round(t.x/step)*step,0,Math.round(t.z/step)*step);if(g.userData.person)g0.scale.setScalar((+$('nh').value||170)/171);objs.add(g);setStyle();select(g);commit()}
 CAT.forEach(([n,ks],ci)=>{const d=document.createElement('details');d.open=true;d.dataset.k='cat'+ci;const sm=document.createElement('summary');sm.textContent=n;d.appendChild(sm);const r=document.createElement('div');r.className='row';d.appendChild(r);ks.forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>addObj(k);r.appendChild(b)});$('add').appendChild(d)});
 function select(g){sel=g;att();const p=g&&g.userData.person;$('hh').style.display=p?'':'none';mzSync();if(p)$('hi').value=Math.round(g.children[0].scale.y*171);recolor();rl()}
@@ -237,7 +270,7 @@ $('de').onclick=del;function del(){if(!sel)return;const s=sel;objs.remove(s);sel
 $('gd').onclick=()=>{if(sel&&!sel.userData.lk){sel.position.y=0;commit()}};
 addEventListener('keydown',e=>{if(e.key=='Delete')del();if(e.key=='Shift')T.setTranslationSnap(null)});
 addEventListener('keyup',e=>{if(e.key=='Shift')T.setTranslationSnap(step)});
-$('st').onchange=e=>{if(!confirm('舞台を切り替えます。\n壁など舞台の物は、新しい舞台の物に全て置き換わります（自分で配置した物は残ります）。\nよろしいですか？')){e.target.value=curSt;return}setStage(e.target.value);commit()};$('gs').onchange=applyGrid;
+$('st').onchange=e=>{const v=e.target.value;ask('舞台を切り替えます。\n壁など舞台の物は、新しい舞台の物に全て置き換わります（自分で配置した物は残ります）。\nよろしいですか？').then(ok=>{if(!ok){e.target.value=curSt;return}setStage(v);commit()})};$('gs').onchange=applyGrid;
 $('rs').onchange=e=>T.setRotationSnap(+e.target.value?e.target.value*rad:null);T.setRotationSnap(90*rad);
 $('sty').onclick=()=>{line=!line;$('sty').textContent=line?'線画':'陰影';setStyle()};
 [14,18,24,35,50,85,135,'fish'].forEach(m=>{const b=document.createElement('button');b.textContent=m=='fish'?'魚眼':m+'mm';b.dataset.m=m;b.onclick=()=>{if(m=='fish')fish=true;else{mm=m;fish=false}lens()};$('ln').appendChild(b)});
@@ -259,7 +292,7 @@ function buildPV(){$('pv').innerHTML='';$('fr').innerHTML='';FR.forEach((f,i)=>{
 const w=document.createElement('div');w.innerHTML='<div class="row" style="align-items:center;color:'+col+';margin-top:6px"><b style="flex:1">'+f.r+'</b><button>PNG</button><button>✕</button></div>';const cv=document.createElement('canvas');cv.style.cssText='width:100%;border:2px solid '+col+';background:#fff;margin-top:2px';w.appendChild(cv);f.cv=cv;const bs=w.querySelectorAll('button');bs[0].onclick=()=>shot(f);bs[1].onclick=()=>{FR.splice(i,1);buildPV()};$('pv').appendChild(w)});layout()}
 $('fa').onclick=()=>{if(FR.length<5){FR.push({r:$('ar').value});buildPV()}};
 function layout(){const w=V.clientWidth,h=V.clientHeight;if(!w||!h)return;R.setSize(w,h);C.aspect=w/h;lens();FR.forEach(f=>{const[a,b]=f.r.split(':'),fa=a/b,fw=Math.min(w*.9,h*.9*fa),fh=fw/fa;f.g={x:(w-fw)/2,y:(h-fh)/2,w:fw,h:fh};Object.assign(f.el.style,{left:f.g.x+'px',top:f.g.y+'px',width:fw+'px',height:fh+'px'});f.cv.width=400;f.cv.height=Math.round(400/fa)})}
-function shot(f){T.visible=false;grid.visible=false;draw();const p=R.getPixelRatio(),g=f.g,c=document.createElement('canvas');c.width=g.w*p;c.height=g.h*p;c.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,c.width,c.height);T.visible=!fish;grid.visible=true;c.toBlob(b=>{if(!b){alert('画像を作成できませんでした');return}showShot(b,'koma_'+f.r.replace(':','-')+'_'+stamp()+'.png')},'image/png')}
+function shot(f){T.visible=false;grid.visible=false;draw();const p=R.getPixelRatio(),g=f.g,c=document.createElement('canvas');c.width=g.w*p;c.height=g.h*p;c.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,c.width,c.height);T.visible=!fish;grid.visible=true;c.toBlob(b=>{if(!b){note('画像を作成できませんでした');return}showShot(b,'koma_'+f.r.replace(':','-')+'_'+stamp()+'.png')},'image/png')}
 let shotUrl='',shotFile=null;
 function stamp(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'-'+z(d.getHours())+z(d.getMinutes())+z(d.getSeconds())}
 function showShot(b,name){if(shotUrl)URL.revokeObjectURL(shotUrl);shotUrl=URL.createObjectURL(b);shotFile=new File([b],name,{type:'image/png'});$('mi').src=shotUrl;
@@ -294,7 +327,7 @@ function labels(){const c={};return objs.children.map(g=>{const b=kname(g);c[b]=
 let ls='';
 function setHid(g,v){g.userData.hid=v;g.visible=!v;if(g===sel)att();commit();rl()}
 function setLk(g,v){g.userData.lk=v;if(g===sel)att();commit();rl()}
-function ren(g){const cur=g.userData.nm||labels()[objs.children.indexOf(g)],v=prompt('名前（空欄で自動名に戻ります）',cur);if(v===null)return;const t=v.trim();if(t===cur)return;g.userData.nm=t;commit();rl()}
+function ren(g){const cur=g.userData.nm||labels()[objs.children.indexOf(g)];dlg('名前（空欄で自動名に戻ります）',{input:1,cancel:1,def:cur}).then(v=>{if(v===null)return;const t=v.trim();if(t===cur)return;g.userData.nm=t;commit();rl()})}
 function delG(g){if(sel===g)select(null);objs.remove(g);disp(g);commit();rl()}
 function row(g,lb){const u=g.userData,d=document.createElement('div');d.className='oi'+(g===sel?' on':'')+(u.hid?' h':'');
 const bt=(ic,t,fn,act)=>{const e=document.createElement('button');e.innerHTML=svg(ic);e.title=t;e.setAttribute('aria-label',t);if(act)e.className='act';e.onclick=ev=>{ev.stopPropagation();fn()};return e};
@@ -322,8 +355,8 @@ d.objs.forEach(o=>{const g=fromRec(o);if(g)objs.add(g)});
 C.position.fromArray(d.cam.p);O.target.fromArray(d.cam.t);O.update();mm=d.mm;fish=!!d.fish;fv=d.fv||130;fp=d.fp||'eq';fsync();FR=d.fr.map(r=>({r}));slots.length=0;(d.slots||[]).forEach((x,i)=>{if(x)slots[i]={p:new THREE.Vector3().fromArray(x.p),t:new THREE.Vector3().fromArray(x.t),mm:x.mm,fish:x.fish,fv:x.fv,fp:x.fp}});buildPV();setStyle();rl()}
 $('fsv').onclick=()=>{const b=new Blob([JSON.stringify(snap(true))],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='manga-layout-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('fld').onclick=()=>$('ff').click();
-$('ff').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;f.text().then(t=>{try{load(JSON.parse(t)).catch(()=>alert('読み込めませんでした'))}catch(x){alert('読み込めませんでした')}})};
-$('fnw').onclick=()=>{if(confirm('今の配置を消して新規にしますか？（舞台の壁などは作り直されます）')){select(null);[...objs.children].forEach(g=>{objs.remove(g);disp(g)});const p=C.position.clone(),t=O.target.clone();setStage($('st').value);C.position.copy(p);O.target.copy(t);O.update();commit()}};
+$('ff').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;f.text().then(t=>{try{load(JSON.parse(t)).catch(()=>note('読み込めませんでした'))}catch(x){note('読み込めませんでした')}})};
+$('fnw').onclick=()=>{ask('今の配置を消して新規にしますか？（舞台の壁などは作り直されます）').then(ok=>{if(!ok)return;select(null);[...objs.children].forEach(g=>{objs.remove(g);disp(g)});const p=C.position.clone(),t=O.target.clone();setStage($('st').value);C.position.copy(p);O.target.copy(t);O.update();commit()})};
 try{const t=localStorage.getItem('mlayout3d');if(t)load(JSON.parse(t),true).catch(()=>{})}catch(x){}
 function putObjs(list){select(null);[...objs.children].forEach(g=>{objs.remove(g);disp(g)});list.forEach(o=>{const g=fromRec(o);if(g)objs.add(g)});setStyle();rl()}
 function ustate(){const d=snap();return JSON.stringify({st:d.st,g:d.st=='free'?[d.gw,d.gd]:0,objs:d.objs})}
@@ -342,3 +375,5 @@ setInterval(()=>{try{localStorage.setItem('mlayout3d',JSON.stringify(snap()))}ca
 
 (function loop(){requestAnimationFrame(loop);fade();draw();if(++fc%15==0){tick();rl()}const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
 </script></body></html>
+
+</body></html>
