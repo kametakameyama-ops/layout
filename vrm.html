@@ -1,4 +1,8 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VRMポーズ固定</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +38,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); padding-inline: 16px; padding-block: 16px; font-size: 14px; line-height: 1.6; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); padding-inline: 16px; padding-block: 16px; font-size: 14px; line-height: 1.6; }
 .app { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 @media (max-width: 800px) { .app { grid-template-columns: minmax(0, 1fr); } }
 
@@ -70,6 +74,8 @@ input[type=file] { display: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
+</head>
+<body>
 <main class="app">
   <section class="stage" id="stage" aria-label="3Dプレビュー">
     <div class="empty" id="empty">
@@ -118,13 +124,12 @@ input[type=file] { display: none; }
 
     <div class="sec">
       <span class="lbl">書き出し</span>
-      <div class="row"><button type="button" class="primary" id="exportObj" disabled>OBJで書き出す（ZIP）</button></div>
-      <div class="status">いまのポーズを固めた形で、OBJ・MTL・テクスチャ画像をZIPにまとめます。解凍するとBlenderやクリスタに読み込めます。</div>
+      <div class="row"><button type="button" class="primary" id="exportObj">OBJで書き出す</button></div>
+      <div class="status">いまのポーズの形を .obj に、色の情報を .mtl に、模様の画像を .png に分けて保存します。3つ以上のファイルが同じ場所に保存されるので、そのままの名前で同じフォルダに置いてください。</div>
     </div>
   </aside>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -346,13 +351,16 @@ stage.addEventListener('dragleave', () => stage.classList.remove('drag'));
 stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('drag'); loadFile(e.dataTransfer.files[0]); });
 
 // --- OBJ書き出し（スキニング済みの頂点を焼き込む） ---
-let dl = null;
 const exportBtn = $('exportObj');
-(async () => {
-  try { dl = (await window.claude?.use?.('downloads')) ?? null; } catch (e) { dl = null; }
-  if (dl) exportBtn.disabled = false;
-  else exportBtn.title = 'この表示環境では書き出しできません';
-})();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
 
 async function texToPng(tex) {
   const img = tex.image;
@@ -365,10 +373,12 @@ async function texToPng(tex) {
 
 async function exportObj() {
   if (!vrm) { say('先にVRMを読み込んでください'); return; }
-  if (!dl) return;
   exportBtn.disabled = true; say('書き出し中…');
   try {
-    await new Promise(r => setTimeout(r, 20));
+    await sleep(20);
+    const d = new Date(), z = n => String(n).padStart(2, '0');
+    const asciiName = modelName.replace(/[^A-Za-z0-9_-]+/g, '').slice(0, 24) || 'vrm';
+    const base = `${asciiName}_pose_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
     vrm.update(0);
     vrm.scene.updateMatrixWorld(true);
 
@@ -377,35 +387,29 @@ async function exportObj() {
     const matNames = new Map();   // material.uuid -> 名前
     const usedNames = new Set();
     let mtl = '';
-    const lines = [];
+    const lines = [`# VRMポーズ固定から書き出し`, `mtllib ${base}.mtl`];
     let vOff = 0;
 
-    const matName = m => {
+    const addMaterial = async m => {
       if (matNames.has(m.uuid)) return matNames.get(m.uuid);
       let n = (m.name || 'mat').replace(/[^\w\-.]+/g, '_') || 'mat';
       let u = n, k = 1;
       while (usedNames.has(u)) u = n + '_' + (k++);
       usedNames.add(u); matNames.set(m.uuid, u);
-      return u;
-    };
-    const addMaterial = async m => {
-      const isNew = !matNames.has(m.uuid);
-      const name = matName(m);
-      if (!isNew) return name;
       const c = m.color || { r: 1, g: 1, b: 1 };
-      mtl += `newmtl ${name}\nKd ${c.r.toFixed(4)} ${c.g.toFixed(4)} ${c.b.toFixed(4)}\nKa 0 0 0\nKs 0 0 0\nd ${m.transparent ? (m.opacity ?? 1) : 1}\n`;
+      mtl += `newmtl ${u}\nKd ${c.r.toFixed(4)} ${c.g.toFixed(4)} ${c.b.toFixed(4)}\nKa 0 0 0\nKs 0 0 0\nd ${(m.transparent || m.alphaTest > 0) ? Math.min(m.opacity ?? 1, 0.999) : 1}\n`;
       const tex = m.map;
       if (tex && tex.image) {
         if (!texFiles.has(tex.uuid)) {
           try {
             const blob = await texToPng(tex);
-            if (blob) { const f = 'tex' + texFiles.size + '.png'; texFiles.set(tex.uuid, f); texBlobs.push([f, blob]); }
+            if (blob) { const f = `${base}_tex${texFiles.size}.png`; texFiles.set(tex.uuid, f); texBlobs.push([f, blob]); }
           } catch (e) { console.warn(e); }
         }
-        if (texFiles.has(tex.uuid)) mtl += `map_Kd textures/${texFiles.get(tex.uuid)}\n`;
+        if (texFiles.has(tex.uuid)) mtl += `map_Kd ${texFiles.get(tex.uuid)}\n`;
       }
       mtl += '\n';
-      return name;
+      return u;
     };
 
     const meshes = [];
@@ -463,25 +467,21 @@ async function exportObj() {
       vOff += n;
     }
 
-    const head = `# VRMポーズ固定から書き出し\nmtllib ${modelName}.mtl\n`;
-    const zip = new JSZip();
-    zip.file(modelName + '.obj', head + lines.join('\n') + '\n');
-    zip.file(modelName + '.mtl', mtl);
-    const tf = zip.folder('textures');
-    for (const [f, b] of texBlobs) tf.file(f, b);
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-    await dl.save({ filename: modelName + '_pose.zip', data: blob });
-    say('書き出しました（' + modelName + '_pose.zip）');
+    saveBlob(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), `${base}.obj`);
+    await sleep(500);
+    saveBlob(new Blob([mtl], { type: 'text/plain' }), `${base}.mtl`);
+    for (const [f, b] of texBlobs) { await sleep(500); saveBlob(b, f); }
+    say(`書き出しました: ${base}.obj / .mtl / 画像${texBlobs.length}枚`);
   } catch (e) {
     console.error(e);
-    say(e && e.code === 'declined' ? '書き出しをキャンセルしました' : '書き出しに失敗しました');
+    say('書き出しに失敗しました: ' + (e && e.message ? e.message : e));
   } finally {
-    exportBtn.disabled = !dl;
+    exportBtn.disabled = false;
   }
 }
 exportBtn.onclick = exportObj;
 
 showBone(); syncJson();
 </script>
-
-</body></html>
+</body>
+</html>
