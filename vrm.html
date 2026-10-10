@@ -1,0 +1,487 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>VRMポーズ固定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: 左に3Dステージ、右に操作パネル。狭い画面ではステージの下にパネルを積む */
+:root {
+  --bg: #eceff3;
+  --panel: #fafbfc;
+  --ink: #1b2230;
+  --muted: #5b6579;
+  --line: #d3d8e0;
+  --accent: #2c58d6;
+  --accent-ink: #ffffff;
+  --stage-a: #f6f7f9;
+  --stage-b: #dfe3ea;
+  --floor: #c5cbd6;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b; --panel: #1a1e26; --ink: #e7eaf1; --muted: #98a1b3; --line: #2b313c;
+    --accent: #7e9cff; --accent-ink: #0d1220;
+    --stage-a: #20252f; --stage-b: #141820; --floor: #343b49;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1e26; --ink: #e7eaf1; --muted: #98a1b3; --line: #2b313c;
+  --accent: #7e9cff; --accent-ink: #0d1220;
+  --stage-a: #20252f; --stage-b: #141820; --floor: #343b49;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); padding-inline: 16px; padding-block: 16px; font-size: 14px; line-height: 1.6; }
+.app { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 800px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; aspect-ratio: 4 / 5; max-height: 80vh; width: 100%;
+  background: linear-gradient(to bottom, var(--stage-a) 0%, var(--stage-b) 100%); }
+.stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 14%; height: 1px; background: var(--floor); pointer-events: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; padding: 24px; z-index: 1; }
+.empty[hidden] { display: none; }
+.empty h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.empty p { margin: 0; color: var(--muted); max-width: 30ch; }
+.stage.drag { outline: 2px dashed var(--accent); outline-offset: -8px; }
+.hint { position: absolute; left: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); z-index: 1; pointer-events: none; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 18px; min-width: 0; }
+.panel h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.02em; }
+.sec { display: grid; gap: 8px; }
+.sec > label, .sec > .lbl { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button, select, textarea { font: inherit; color: var(--ink); }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; min-height: 34px; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; min-height: 36px; }
+.axis { display: grid; grid-template-columns: 16px minmax(0, 1fr) 52px; gap: 10px; align-items: center; }
+.axis b { font-family: var(--font-mono); font-weight: 500; color: var(--muted); }
+.axis output { font-family: var(--font-mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+textarea { width: 100%; min-height: 84px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; font-family: var(--font-mono); font-size: 11px; }
+.status { min-height: 1.6em; color: var(--muted); font-size: 12px; }
+input[type=file] { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="app">
+  <section class="stage" id="stage" aria-label="3Dプレビュー">
+    <div class="empty" id="empty">
+      <h2>VRMファイルを読み込む</h2>
+      <p>.vrm ファイルをここへドロップするか、下のボタンから選びます。</p>
+      <button class="primary" id="pick2" type="button">ファイルを選ぶ</button>
+    </div>
+    <div class="hint">点をタップで関節を選択 → 輪をドラッグで回す / 空きをドラッグで視点回転</div>
+  </section>
+
+  <aside class="panel">
+    <h1>VRMポーズ固定</h1>
+
+    <div class="sec">
+      <span class="lbl">モデル</span>
+      <div class="row"><button id="pick" type="button">VRMを開く</button></div>
+      <input type="file" id="file" accept=".vrm,.glb">
+      <div class="status" id="status" role="status" aria-live="polite">未読み込み</div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl">プリセット</span>
+      <div class="row">
+        <button type="button" data-preset="t">Tポーズ</button>
+        <button type="button" data-preset="a">Aポーズ</button>
+        <button type="button" data-preset="rest">腕を下ろす</button>
+        <button type="button" id="toggleMarkers">関節の点を表示/非表示</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <label for="bone">ボーン</label>
+      <select id="bone"></select>
+      <div class="axis"><b>X</b><input type="range" id="rx" min="-180" max="180" step="1" value="0"><output id="ox">0°</output></div>
+      <div class="axis"><b>Y</b><input type="range" id="ry" min="-180" max="180" step="1" value="0"><output id="oy">0°</output></div>
+      <div class="axis"><b>Z</b><input type="range" id="rz" min="-180" max="180" step="1" value="0"><output id="oz">0°</output></div>
+      <div class="row"><button type="button" id="resetBone">このボーンを戻す</button><button type="button" id="resetAll">全部戻す</button></div>
+    </div>
+
+    <div class="sec">
+      <label for="json">ポーズデータ</label>
+      <textarea id="json" spellcheck="false" placeholder="コピーしたポーズをここに貼り付けて「読み込む」"></textarea>
+      <div class="row"><button type="button" id="copy">コピー</button><button type="button" id="apply">読み込む</button></div>
+      <div class="status">ポーズはこのブラウザに自動で保存され、次に開いたときも同じ姿勢になります。</div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl">書き出し</span>
+      <div class="row"><button type="button" class="primary" id="exportObj" disabled>OBJで書き出す（ZIP）</button></div>
+      <div class="status">いまのポーズを固めた形で、OBJ・MTL・テクスチャ画像をZIPにまとめます。解凍するとBlenderやクリスタに読み込めます。</div>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.1.0/lib/three-vrm.module.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+const GROUPS = [
+  ['体幹', [['hips','腰'],['spine','脊椎'],['chest','胸'],['upperChest','上胸'],['neck','首'],['head','頭']]],
+  ['左腕', [['leftShoulder','左肩'],['leftUpperArm','左上腕'],['leftLowerArm','左前腕'],['leftHand','左手']]],
+  ['右腕', [['rightShoulder','右肩'],['rightUpperArm','右上腕'],['rightLowerArm','右前腕'],['rightHand','右手']]],
+  ['左脚', [['leftUpperLeg','左太もも'],['leftLowerLeg','左すね'],['leftFoot','左足'],['leftToes','左つま先']]],
+  ['右脚', [['rightUpperLeg','右太もも'],['rightLowerLeg','右すね'],['rightFoot','右足'],['rightToes','右つま先']]],
+];
+const KEY = 'vrm-pose-fixed-v1';
+const $ = id => document.getElementById(id);
+const stage = $('stage'), statusEl = $('status');
+let pose = {};           // { boneName: [x,y,z] } 度
+let current = 'head';
+let vrm = null;
+let modelName = 'model';
+
+try { const s = localStorage.getItem(KEY); if (s) pose = JSON.parse(s) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pose)); } catch (e) {} };
+const say = t => { statusEl.textContent = t; };
+
+// --- three.js ---
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+camera.position.set(0, 1.2, 3.2);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1, 0);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(1.5, 3, 2.5); scene.add(sun);
+
+// 選んだボーンに回転ギズモを付け、ドラッグで直接回す
+const tc = new TransformControls(camera, renderer.domElement);
+tc.setMode('rotate'); tc.setSpace('local'); tc.setSize(0.8);
+scene.add(tc);
+let tcBusy = false;
+tc.addEventListener('dragging-changed', e => {
+  controls.enabled = !e.value;
+  if (e.value) tcBusy = true; else setTimeout(() => { tcBusy = false; }, 80);
+});
+tc.addEventListener('objectChange', () => {
+  const node = tc.object; if (!node) return;
+  pose[current] = [node.rotation.x, node.rotation.y, node.rotation.z].map(a => Math.round(a / D2R));
+  showBone(); save(); syncJson();
+});
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (vrm) vrm.update(dt);
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+// --- ポーズ適用 ---
+const D2R = Math.PI / 180;
+function applyPose() {
+  if (!vrm) return;
+  for (const [, list] of GROUPS) for (const [name] of list) {
+    const node = vrm.humanoid.getNormalizedBoneNode(name);
+    if (!node) continue;
+    const r = pose[name] || [0, 0, 0];
+    node.rotation.set(r[0] * D2R, r[1] * D2R, r[2] * D2R);
+  }
+}
+
+// --- UI ---
+const sel = $('bone');
+for (const [g, list] of GROUPS) {
+  const og = document.createElement('optgroup'); og.label = g;
+  for (const [n, j] of list) { const o = document.createElement('option'); o.value = n; o.textContent = j; og.appendChild(o); }
+  sel.appendChild(og);
+}
+sel.value = current;
+const sliders = ['rx','ry','rz'].map(id => $(id));
+const outs = ['ox','oy','oz'].map(id => $(id));
+function showBone() {
+  const r = pose[current] || [0, 0, 0];
+  sliders.forEach((s, i) => { s.value = r[i]; outs[i].textContent = r[i] + '°'; });
+}
+sel.addEventListener('change', () => selectBone(sel.value));
+sliders.forEach((s, i) => s.addEventListener('input', () => {
+  const r = (pose[current] || [0, 0, 0]).slice();
+  r[i] = Number(s.value); pose[current] = r;
+  outs[i].textContent = r[i] + '°';
+  applyPose(); save(); syncJson();
+}));
+$('resetBone').onclick = () => { delete pose[current]; showBone(); applyPose(); save(); syncJson(); };
+$('resetAll').onclick = () => { pose = {}; showBone(); applyPose(); save(); syncJson(); };
+
+const PRESETS = {
+  t: {},
+  a: { leftUpperArm: [0,0,-55], rightUpperArm: [0,0,55] },
+  rest: { leftUpperArm: [0,0,-78], rightUpperArm: [0,0,78], leftLowerArm: [0,-8,0], rightLowerArm: [0,8,0] },
+};
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  pose = JSON.parse(JSON.stringify(PRESETS[b.dataset.preset]));
+  showBone(); applyPose(); save(); syncJson();
+});
+
+const jsonEl = $('json');
+function syncJson() { jsonEl.value = JSON.stringify(pose); }
+$('copy').onclick = async () => {
+  syncJson();
+  try { await navigator.clipboard.writeText(jsonEl.value); say('ポーズをコピーしました'); }
+  catch (e) { jsonEl.focus(); jsonEl.select(); say('選択しました。手動でコピーしてください'); }
+};
+$('apply').onclick = () => {
+  try {
+    const o = JSON.parse(jsonEl.value);
+    if (!o || typeof o !== 'object' || Array.isArray(o)) throw 0;
+    const clean = {};
+    for (const k in o) if (Array.isArray(o[k]) && o[k].length === 3 && o[k].every(Number.isFinite)) clean[k] = o[k].map(Math.round);
+    pose = clean; showBone(); applyPose(); save(); say('ポーズを読み込みました');
+  } catch (e) { say('読み込めません。コピーしたポーズデータを貼り付けてください'); }
+};
+
+// --- 関節マーカー（タップでボーン選択） ---
+const markers = [];
+let markersVisible = true;
+const markerGeo = new THREE.SphereGeometry(0.02, 12, 8);
+function buildMarkers() {
+  markers.length = 0;
+  for (const [, list] of GROUPS) for (const [name] of list) {
+    const node = vrm.humanoid.getNormalizedBoneNode(name);
+    if (!node) continue;
+    const m = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: 0x2c58d6, depthTest: false, transparent: true, opacity: 0.85 }));
+    m.renderOrder = 999; m.userData.bone = name; m.visible = markersVisible;
+    node.add(m); markers.push(m);
+  }
+}
+function paintMarkers() {
+  for (const m of markers) {
+    const on = m.userData.bone === current;
+    m.material.color.set(on ? 0xff7a1a : 0x2c58d6);
+    m.scale.setScalar(on ? 1.5 : 1);
+  }
+}
+function selectBone(name) {
+  current = name; sel.value = name; showBone(); paintMarkers();
+  if (!vrm) return;
+  const node = vrm.humanoid.getNormalizedBoneNode(name);
+  if (node) tc.attach(node); else tc.detach();
+}
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  const d = downAt; downAt = null;
+  if (!d || tcBusy || !vrm || !markersVisible) return;
+  if (Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 5) return;
+  const rc = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(markers, false)[0];
+  if (hit) selectBone(hit.object.userData.bone);
+});
+$('toggleMarkers').onclick = () => {
+  markersVisible = !markersVisible;
+  markers.forEach(m => { m.visible = markersVisible; });
+  tc.visible = tc.enabled = markersVisible;
+};
+
+// --- VRM 読み込み ---
+const loader = new GLTFLoader();
+loader.register(p => new VRMLoaderPlugin(p));
+
+async function loadFile(file) {
+  if (!file) return;
+  say('読み込み中…');
+  const buf = await file.arrayBuffer();
+  loader.parse(buf, '', gltf => {
+    const v = gltf.userData.vrm;
+    if (!v) { say('VRMファイルではありません'); return; }
+    tc.detach(); markers.length = 0;
+    if (vrm) { scene.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); }
+    VRMUtils.rotateVRM0(v);
+    vrm = v; scene.add(vrm.scene);
+    modelName = file.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|\s]+/g, '_') || 'model';
+    $('empty').hidden = true;
+    const box = new THREE.Box3().setFromObject(vrm.scene);
+    const c = box.getCenter(new THREE.Vector3()), h = Math.max(box.getSize(new THREE.Vector3()).y, 0.5);
+    controls.target.copy(c);
+    camera.position.set(c.x, c.y + h * 0.05, c.z + h * 2.2);
+    applyPose();
+    buildMarkers(); selectBone(current);
+    say(file.name + ' を読み込みました');
+  }, err => { console.error(err); say('読み込みに失敗しました'); });
+}
+const fileEl = $('file');
+$('pick').onclick = $('pick2').onclick = () => fileEl.click();
+fileEl.onchange = () => { loadFile(fileEl.files[0]); fileEl.value = ''; };
+stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('drag'); });
+stage.addEventListener('dragleave', () => stage.classList.remove('drag'));
+stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('drag'); loadFile(e.dataTransfer.files[0]); });
+
+// --- OBJ書き出し（スキニング済みの頂点を焼き込む） ---
+let dl = null;
+const exportBtn = $('exportObj');
+(async () => {
+  try { dl = (await window.claude?.use?.('downloads')) ?? null; } catch (e) { dl = null; }
+  if (dl) exportBtn.disabled = false;
+  else exportBtn.title = 'この表示環境では書き出しできません';
+})();
+
+async function texToPng(tex) {
+  const img = tex.image;
+  const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+  if (!w || !h) return null;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return new Promise(r => c.toBlob(r, 'image/png'));
+}
+
+async function exportObj() {
+  if (!vrm) { say('先にVRMを読み込んでください'); return; }
+  if (!dl) return;
+  exportBtn.disabled = true; say('書き出し中…');
+  try {
+    await new Promise(r => setTimeout(r, 20));
+    vrm.update(0);
+    vrm.scene.updateMatrixWorld(true);
+
+    const texFiles = new Map();   // texture.uuid -> ファイル名
+    const texBlobs = [];
+    const matNames = new Map();   // material.uuid -> 名前
+    const usedNames = new Set();
+    let mtl = '';
+    const lines = [];
+    let vOff = 0;
+
+    const matName = m => {
+      if (matNames.has(m.uuid)) return matNames.get(m.uuid);
+      let n = (m.name || 'mat').replace(/[^\w\-.]+/g, '_') || 'mat';
+      let u = n, k = 1;
+      while (usedNames.has(u)) u = n + '_' + (k++);
+      usedNames.add(u); matNames.set(m.uuid, u);
+      return u;
+    };
+    const addMaterial = async m => {
+      const isNew = !matNames.has(m.uuid);
+      const name = matName(m);
+      if (!isNew) return name;
+      const c = m.color || { r: 1, g: 1, b: 1 };
+      mtl += `newmtl ${name}\nKd ${c.r.toFixed(4)} ${c.g.toFixed(4)} ${c.b.toFixed(4)}\nKa 0 0 0\nKs 0 0 0\nd ${m.transparent ? (m.opacity ?? 1) : 1}\n`;
+      const tex = m.map;
+      if (tex && tex.image) {
+        if (!texFiles.has(tex.uuid)) {
+          try {
+            const blob = await texToPng(tex);
+            if (blob) { const f = 'tex' + texFiles.size + '.png'; texFiles.set(tex.uuid, f); texBlobs.push([f, blob]); }
+          } catch (e) { console.warn(e); }
+        }
+        if (texFiles.has(tex.uuid)) mtl += `map_Kd textures/${texFiles.get(tex.uuid)}\n`;
+      }
+      mtl += '\n';
+      return name;
+    };
+
+    const meshes = [];
+    vrm.scene.traverseVisible(o => { if (o.isMesh && !o.userData.bone && o.geometry && o.geometry.attributes.position) meshes.push(o); });
+
+    const bm = new THREE.Matrix4(), tmp = new THREE.Vector3(), bp = new THREE.Vector3(), acc = new THREE.Vector3();
+    let meshNo = 0;
+    for (const o of meshes) {
+      const g = o.geometry, pos = g.attributes.position, uv = g.attributes.uv, idx = g.index;
+      const si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+      const skinned = o.isSkinnedMesh && si && sw && o.skeleton;
+      if (skinned) o.skeleton.update();
+      const n = pos.count;
+      const P = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        tmp.fromBufferAttribute(pos, i);
+        if (skinned) {
+          bp.copy(tmp).applyMatrix4(o.bindMatrix);
+          acc.set(0, 0, 0);
+          for (let k = 0; k < 4; k++) {
+            const w = sw.array[i * 4 + k]; if (!w) continue;
+            bm.fromArray(o.skeleton.boneMatrices, si.array[i * 4 + k] * 16);
+            tmp.copy(bp).applyMatrix4(bm); acc.addScaledVector(tmp, w);
+          }
+          acc.applyMatrix4(o.bindMatrixInverse);
+          tmp.copy(acc);
+        }
+        tmp.applyMatrix4(o.matrixWorld);
+        P[i * 3] = tmp.x; P[i * 3 + 1] = tmp.y; P[i * 3 + 2] = tmp.z;
+      }
+      // 法線はポーズ後の形から計算し直す
+      const ng = new THREE.BufferGeometry();
+      ng.setAttribute('position', new THREE.BufferAttribute(P, 3));
+      if (idx) ng.setIndex(idx);
+      ng.computeVertexNormals();
+      const N = ng.attributes.normal.array;
+      ng.dispose();
+
+      lines.push(`o mesh_${meshNo++}_${(o.name || 'mesh').replace(/[^\w\-]+/g, '_')}`);
+      for (let i = 0; i < n; i++) lines.push(`v ${P[i*3].toFixed(6)} ${P[i*3+1].toFixed(6)} ${P[i*3+2].toFixed(6)}`);
+      if (uv) for (let i = 0; i < n; i++) lines.push(`vt ${uv.getX(i).toFixed(6)} ${(1 - uv.getY(i)).toFixed(6)}`);
+      for (let i = 0; i < n; i++) lines.push(`vn ${N[i*3].toFixed(5)} ${N[i*3+1].toFixed(5)} ${N[i*3+2].toFixed(5)}`);
+
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      const groups = g.groups.length ? g.groups : [{ start: 0, count: idx ? idx.count : n, materialIndex: 0 }];
+      const ref = i => { const j = i + 1 + vOff; return uv ? `${j}/${j}/${j}` : `${j}//${j}`; };
+      for (const gr of groups) {
+        const m = mats[gr.materialIndex] || mats[0];
+        lines.push(`usemtl ${await addMaterial(m)}`);
+        for (let t = gr.start; t < gr.start + gr.count; t += 3) {
+          const a = idx ? idx.getX(t) : t, b = idx ? idx.getX(t + 1) : t + 1, c = idx ? idx.getX(t + 2) : t + 2;
+          lines.push(`f ${ref(a)} ${ref(b)} ${ref(c)}`);
+        }
+      }
+      vOff += n;
+    }
+
+    const head = `# VRMポーズ固定から書き出し\nmtllib ${modelName}.mtl\n`;
+    const zip = new JSZip();
+    zip.file(modelName + '.obj', head + lines.join('\n') + '\n');
+    zip.file(modelName + '.mtl', mtl);
+    const tf = zip.folder('textures');
+    for (const [f, b] of texBlobs) tf.file(f, b);
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    await dl.save({ filename: modelName + '_pose.zip', data: blob });
+    say('書き出しました（' + modelName + '_pose.zip）');
+  } catch (e) {
+    console.error(e);
+    say(e && e.code === 'declined' ? '書き出しをキャンセルしました' : '書き出しに失敗しました');
+  } finally {
+    exportBtn.disabled = !dl;
+  }
+}
+exportBtn.onclick = exportObj;
+
+showBone(); syncJson();
+</script>
+
+</body></html>
