@@ -124,12 +124,13 @@ input[type=file] { display: none; }
 
     <div class="sec">
       <span class="lbl">書き出し</span>
-      <div class="row"><button type="button" class="primary" id="exportObj">OBJで書き出す</button></div>
-      <div class="status">いまのポーズの形を .obj に、色の情報を .mtl に、模様の画像を .png に分けて保存します。3つ以上のファイルが同じ場所に保存されるので、そのままの名前で同じフォルダに置いてください。</div>
+      <div class="row"><button type="button" class="primary" id="exportObj">OBJで書き出す（ZIP）</button></div>
+      <div class="status">いまのポーズの形（.obj）・色の情報（.mtl）・模様の画像（.png）を、1つのZIPにまとめて保存します。解凍してできたファイルを、全部同時に選んで読み込んでください。</div>
     </div>
   </aside>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -467,11 +468,14 @@ async function exportObj() {
       vOff += n;
     }
 
-    saveBlob(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), `${base}.obj`);
-    await sleep(500);
-    saveBlob(new Blob([mtl], { type: 'text/plain' }), `${base}.mtl`);
-    for (const [f, b] of texBlobs) { await sleep(500); saveBlob(b, f); }
-    say(`書き出しました: ${base}.obj / .mtl / 画像${texBlobs.length}枚`);
+    if (typeof JSZip === 'undefined') throw new Error('ZIPライブラリを読み込めませんでした。通信状況を確認して再読み込みしてください');
+    const zip = new JSZip();
+    zip.file(`${base}.obj`, lines.join('\n') + '\n');
+    zip.file(`${base}.mtl`, mtl);
+    for (const [f, b] of texBlobs) zip.file(f, b);
+    const zblob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    saveBlob(zblob, `${base}.zip`);
+    say(`書き出しました: ${base}.zip（obj・mtl・画像${texBlobs.length}枚）`);
   } catch (e) {
     console.error(e);
     say('書き出しに失敗しました: ' + (e && e.message ? e.message : e));
