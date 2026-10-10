@@ -1,5 +1,23 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>漫画レイアウト3D</title>
+<!DOCTYPE html>
+<!--
+© 2026 しゅうさく  All rights reserved.
+
+漫画レイアウト3D の利用条件
+
+【許可すること】
+・本ツールの無料での利用（個人・商用を問いません）
+・本ファイルをダウンロードし、ご自身の端末内で改変して使うこと
+・本ツールで作成した画像やレイアウトデータの利用（権利は利用者に帰属します）
+
+【禁止すること】
+・本ファイルの全部または一部を、改変したものも含めて、公開・配布・再アップロード・転載すること
+・本ツールの全部または一部を、自作のツールやサービスに組み込んで公開すること
+
+【その他】
+・本ツールは現状のまま提供します。利用により生じた損害について、作者は責任を負いません。
+・外部から読み込んでいる three.js などのライブラリ（MIT License）には、それぞれのライセンスが適用されます。
+-->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>漫画レイアウト3D</title><meta name="description" content="漫画のコマ割りのために、部屋や人物を3Dで配置してカメラ位置を決めるブラウザ用ツール。"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3l11 6v14l-11 6-11-6V9z' fill='%232563eb' stroke='%23222' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M5 9l11 6 11-6M16 15v14' fill='none' stroke='%23222' stroke-width='2'/%3E%3C/svg%3E">
 <style>
 :root{--bg:#f4f3ef;--fg:#222;--pn:#fff;--bd:#ccc;--ac:#2563eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#1b1b1a;--fg:#eee;--pn:#2a2a28;--bd:#444}}
@@ -36,13 +54,11 @@ details>.row,details>div{margin-bottom:6px}
 #md{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:9;gap:8px}
 #md img{max-width:92%;max-height:72%;background:#fff}
 @media(max-width:760px){#main{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}.side{max-height:24vh;flex-direction:row;flex-wrap:wrap;border:0}#main .side:first-child{order:0}#ops{flex-basis:100%}#lp{flex-direction:column;flex-wrap:nowrap;max-height:36vh}}
-</style>
-<script>/* 閲覧用の仮設定: この表示環境では確認ダイアログと名前入力が使えないため */window.confirm=function(){return true};window.prompt=function(m,d){return d};</script>
-
+</style></head><body>
 <div class="bar"><b>漫画レイアウト3D</b><select id="st"><optgroup label="部屋"><option value="room">個室</option><option value="ldk">LDK</option><option value="mansion">豪邸の広間</option><option value="corridor">学校の廊下</option></optgroup><optgroup label="広い空間"><option value="road">道</option><option value="forest">森</option><option value="free">フリースペース</option></optgroup><option value="ppl">人物のみ</option></select><span id="gz">地面 <input id="gw" type="number" value="20" min="2" max="200" step="1">×<input id="gdp" type="number" value="20" min="2" max="200" step="1">m</span>
 吸着<select id="gs"><option>0.1</option><option>0.25</option><option>0.5</option><option>1</option><option>5</option></select>m
 <select id="rs"><option value="90">回転90°</option><option value="45">45°</option><option value="15">15°</option><option value="0">なし</option></select>
-<button id="sty">線画</button><button id="un">取り消し</button><button id="rd">やり直し</button><button id="fsv">ファイル保存</button><button id="fld">ファイル読込</button><button id="fnw">新規</button><input type="file" id="ff" accept=".json,application/json" hidden></div>
+<button id="sty">線画</button><button id="un">取り消し</button><button id="rd">やり直し</button><button id="fsv">ファイル保存</button><button id="fld">ファイル読込</button><button id="fnw">新規</button><input type="file" id="ff" accept=".json,application/json" hidden><button id="cp" style="margin-left:auto;opacity:.75">© しゅうさく</button></div>
 <div id="main">
 <div class="side" id="lp"><div class="row"><button id="tb0" class="on" style="flex:1">追加</button><button id="tb1" style="flex:1">リスト</button></div>
 <div class="tp" id="tp0"><div id="add"></div>
@@ -75,6 +91,14 @@ details>.row,details>div{margin-bottom:6px}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<div id="lc" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9;align-items:center;justify-content:center;padding:16px"><div style="background:var(--pn);color:var(--fg);border:1px solid var(--bd);border-radius:10px;max-width:520px;max-height:85%;overflow:auto;padding:16px;font-size:13px;line-height:1.7"><div style="font-weight:bold">© 2026 しゅうさく　All rights reserved.</div><div style="font-weight:bold;margin-top:8px">漫画レイアウト3D の利用条件</div>
+<div style="margin-top:8px"><b>許可すること</b><br>・本ツールの無料での利用（個人・商用を問いません）<br>・本ファイルをダウンロードし、ご自身の端末内で改変して使うこと<br>・本ツールで作成した画像やレイアウトデータの利用（権利は利用者に帰属します）</div>
+<div style="margin-top:8px"><b>禁止すること</b><br>・本ファイルの全部または一部を、改変したものも含めて、公開・配布・再アップロード・転載すること<br>・本ツールの全部または一部を、自作のツールやサービスに組み込んで公開すること</div>
+<div style="margin-top:8px"><b>その他</b><br>・本ツールは現状のまま提供します。利用により生じた損害について、作者は責任を負いません。<br>・外部から読み込んでいる three.js などのライブラリ（MIT License）には、それぞれのライセンスが適用されます。</div>
+<div style="margin-top:12px;text-align:right"><button id="lcl">閉じる</button></div></div></div>
+<script>(function(){var ok=window.THREE&&THREE.OrbitControls&&THREE.TransformControls,gl=false;try{var c=document.createElement('canvas');gl=!!(c.getContext('webgl2')||c.getContext('webgl'))}catch(e){}
+if(ok&&gl)return;var d=document.createElement('div');d.style.cssText='position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg,#fff);color:var(--fg,#222);z-index:99;font:14px/1.8 sans-serif;text-align:center';
+d.textContent=ok?'このブラウザでは3D表示（WebGL）を使えません。別のブラウザでお試しください。':'必要なライブラリを読み込めませんでした。通信状況を確認して、ページを再読み込みしてください。';document.body.appendChild(d)})();</script>
 <script>
 const $=id=>document.getElementById(id),V=$('v'),rad=Math.PI/180;
 const R=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});R.setPixelRatio(Math.min(devicePixelRatio,2));V.insertBefore(R.domElement,$('fr'));
@@ -247,6 +271,21 @@ $('mdl').onclick=()=>{if(!shotFile)return;const a=document.createElement('a');a.
 $('msh').onclick=()=>{if(shotFile)navigator.share({files:[shotFile],title:shotFile.name}).catch(()=>{})};
 new ResizeObserver(layout).observe(V);
 
+const RATIOS=['16:9','9:16','4:3','3:4','1:1','3:2','2:3'];
+const isN=v=>typeof v=='number'&&isFinite(v),isA=(v,n)=>Array.isArray(v)&&v.length==n&&v.every(isN),hop=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+function sanitize(d){if(!d||typeof d!='object'||!Array.isArray(d.objs))return null;const o={};
+o.st=typeof d.st=='string'&&hop(ST,d.st)?d.st:'room';
+o.gs=['0.1','0.25','0.5','1','5'].includes(String(d.gs))?String(d.gs):'0.1';
+o.rs=['90','45','15','0'].includes(String(d.rs))?String(d.rs):'90';
+o.gw=isN(d.gw)?Math.min(200,Math.max(2,d.gw)):20;o.gd=isN(d.gd)?Math.min(200,Math.max(2,d.gd)):20;
+o.line=d.line!==false;o.mm=[14,18,24,35,50,85,135].includes(d.mm)?d.mm:35;o.fish=!!d.fish;
+o.fv=isN(d.fv)?Math.min(220,Math.max(90,d.fv)):130;o.fp=['eq','st','es'].includes(d.fp)?d.fp:'eq';
+o.cam={p:d.cam&&isA(d.cam.p,3)?d.cam.p:[0,1.5,5],t:d.cam&&isA(d.cam.t,3)?d.cam.t:[0,1,0]};
+o.fr=(Array.isArray(d.fr)?d.fr:[]).filter(r=>RATIOS.includes(r)).slice(0,5);
+o.slots=(Array.isArray(d.slots)?d.slots:[]).slice(0,6).map(s=>s&&isA(s.p,3)&&isA(s.t,3)?{p:s.p,t:s.t,mm:[14,18,24,35,50,85,135].includes(s.mm)?s.mm:35,fish:!!s.fish,fv:isN(s.fv)?Math.min(220,Math.max(90,s.fv)):130,fp:['eq','st','es'].includes(s.fp)?s.fp:'eq'}:null);
+o.objs=d.objs.slice(0,2000).filter(x=>x&&typeof x.k=='string'&&hop(P,x.k)&&isA(x.p,3)&&isA(x.q,4)&&isA(x.s,3)).map(x=>({k:x.k,a:Array.isArray(x.a)&&x.a.length<=8&&JSON.stringify(x.a).length<4000?x.a:[],n:isA(x.n,3)?x.n:null,gen:!!x.gen,p:x.p,q:x.q,s:x.s,nm:typeof x.nm=='string'?x.nm.slice(0,100):'',hid:!!x.hid,lk:!!x.lk}));
+o.models={};if(d.models&&typeof d.models=='object')Object.keys(d.models).forEach(id=>{const m=d.models[id];if(!m||typeof m!='object'||!/^[A-Za-z0-9_-]{1,40}$/.test(id)||id=='__proto__'||id=='constructor'||id=='prototype')return;const r={name:String(m.name||'model').slice(0,200),h:isN(m.h)?m.h:undefined,u:isN(m.u)?m.u:undefined};if(Array.isArray(m.files))r.files=m.files.filter(f=>f&&typeof f.name=='string'&&typeof f.b64=='string').map(f=>({name:f.name.slice(0,200),b64:f.b64}));o.models[id]=r});
+return o}
 function fromRec(o){if(!P[o.k])return null;const g=wrap(o.k,o.a||[],o.n,o.gen),g0=g.children[0];g.position.fromArray(o.p);g0.quaternion.fromArray(o.q);g0.scale.fromArray(o.s);g.userData.nm=o.nm||'';g.userData.hid=!!o.hid;g.userData.lk=!!o.lk;g.visible=!o.hid;return g}
 const IC={ey:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',eo:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/>',lk:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',ul:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.5-1.5"/>',pc:'<path d="M4 20l1-5L16 4l4 4L9 19z"/>',tr:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'};
 const svg=p=>'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
@@ -258,7 +297,7 @@ function setLk(g,v){g.userData.lk=v;if(g===sel)att();commit();rl()}
 function ren(g){const cur=g.userData.nm||labels()[objs.children.indexOf(g)],v=prompt('名前（空欄で自動名に戻ります）',cur);if(v===null)return;const t=v.trim();if(t===cur)return;g.userData.nm=t;commit();rl()}
 function delG(g){if(sel===g)select(null);objs.remove(g);disp(g);commit();rl()}
 function row(g,lb){const u=g.userData,d=document.createElement('div');d.className='oi'+(g===sel?' on':'')+(u.hid?' h':'');
-const bt=(ic,t,fn,act)=>{const e=document.createElement('button');e.innerHTML=svg(ic);e.title=t;if(act)e.className='act';e.onclick=ev=>{ev.stopPropagation();fn()};return e};
+const bt=(ic,t,fn,act)=>{const e=document.createElement('button');e.innerHTML=svg(ic);e.title=t;e.setAttribute('aria-label',t);if(act)e.className='act';e.onclick=ev=>{ev.stopPropagation();fn()};return e};
 const nm=document.createElement('span');nm.className='nm';nm.textContent=lb;nm.onclick=()=>select(g);nm.ondblclick=()=>ren(g);
 d.append(bt(u.hid?IC.eo:IC.ey,u.hid?'表示する':'非表示にする',()=>setHid(g,!u.hid)),bt(u.lk?IC.lk:IC.ul,u.lk?'固定を解除':'固定する（画面で選べなくなる）',()=>setLk(g,!u.lk),u.lk),nm,bt(IC.pc,'名前を変更',()=>ren(g)),bt(IC.tr,'削除',()=>delG(g)));return d}
 function rl(){const lb=labels(),ch=objs.children;const k=ch.map((g,i)=>g.id+':'+lb[i]+(g.userData.hid?'h':'')+(g.userData.lk?'l':'')+(g.userData.gen?'g':'')).join('|')+'#'+(sel?sel.id:'');if(k===ls)return;ls=k;
@@ -273,9 +312,10 @@ const usave=()=>{try{localStorage.setItem(UIK,JSON.stringify(ui))}catch(x){}};
 document.querySelectorAll('details[data-k]').forEach(d=>{const k=d.dataset.k;if(k in ui)d.open=!!ui[k];d.addEventListener('toggle',()=>{ui[k]=d.open;usave()})});
 function tab(i){[0,1].forEach(j=>{$('tp'+j).style.display=j==i?'':'none';$('tb'+j).classList.toggle('on',j==i)});ui.tab=i;usave();ls='';rl()}
 $('tb0').onclick=()=>tab(0);$('tb1').onclick=()=>tab(1);tab(+ui.tab==1?1:0);fsync();
+$('cp').onclick=()=>{$('lc').style.display='flex'};$('lcl').onclick=()=>{$('lc').style.display='none'};$('lc').onclick=e=>{if(e.target===$('lc'))$('lc').style.display='none'};
 setStage('room');buildPV();
 function snap(full){return{v:1,st:$('st').value,gs:$('gs').value,rs:$('rs').value,line,mm,fish,fv,fp,cam:{p:C.position.toArray(),t:O.target.toArray()},fr:FR.map(f=>f.r),slots:[...slots].map(s=>s?{p:s.p.toArray(),t:s.t.toArray(),mm:s.mm,fish:s.fish,fv:s.fv,fp:s.fp}:null),gw,gd,models:mdl(full),objs:objs.children.map(g=>({k:g.userData.k,a:g.userData.a||[],n:g.userData.n||null,gen:!!g.userData.gen,p:g.position.toArray(),q:g.children[0].quaternion.toArray(),s:g.children[0].scale.toArray(),nm:g.userData.nm||'',hid:!!g.userData.hid,lk:!!g.userData.lk}))}}
-function load(d,boot){const need=d.models&&Object.keys(d.models).some(id=>!(MODELS[id]&&MODELS[id].tpl));if(!need){load0(d);return Promise.resolve()}return prep(d.models).then(()=>{load0(d);if(boot)rebase()})}
+function load(d,boot){d=sanitize(d);if(!d)return Promise.reject(new Error('bad'));const need=d.models&&Object.keys(d.models).some(id=>!(MODELS[id]&&MODELS[id].tpl));if(!need){load0(d);return Promise.resolve()}return prep(d.models).then(()=>{load0(d);if(boot)rebase()})}
 function rebase(){H=[ustate()];hix=0;pend='';ub()}
 function load0(d){$('st').value=d.st;gw=d.gw||20;gd=d.gd||20;setStage(d.st);$('gs').value=d.gs;applyGrid();$('rs').value=d.rs;$('rs').onchange({target:$('rs')});line=d.line;$('sty').textContent=line?'線画':'陰影';select(null);const hg=d.objs.some(o=>o.gen);[...objs.children].forEach(g=>{if(hg||!g.userData.gen)objs.remove(g)});
 d.objs.forEach(o=>{const g=fromRec(o);if(g)objs.add(g)});
@@ -301,5 +341,4 @@ addEventListener('keydown',e=>{if(document.activeElement&&document.activeElement
 setInterval(()=>{try{localStorage.setItem('mlayout3d',JSON.stringify(snap()))}catch(x){}},2000);
 
 (function loop(){requestAnimationFrame(loop);fade();draw();if(++fc%15==0){tick();rl()}const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
-</script>
-</body></html>
+</script></body></html>
