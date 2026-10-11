@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <!--
 © 2026 しゅうさく  All rights reserved.
@@ -32,6 +31,7 @@ body{background:var(--bg);color:var(--fg);font:12px sans-serif;display:flex;flex
 .side h6{margin:8px 0 2px;font-size:11px;opacity:.6}
 .row{display:flex;flex-wrap:wrap;gap:3px}
 button,select,input{font:inherit;color:var(--fg);background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:5px 7px}
+a.btn{font:inherit;color:var(--fg);background:var(--pn);border:1px solid var(--bd);border-radius:6px;padding:5px 7px;text-decoration:none}
 button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 input[type=number]{width:64px}
 button:disabled{opacity:.4}
@@ -59,7 +59,7 @@ details>.row,details>div{margin-bottom:6px}
 <div class="bar"><b>漫画レイアウト3D</b><select id="st"><optgroup label="部屋"><option value="room">個室</option><option value="ldk">LDK</option><option value="mansion">豪邸の広間</option><option value="corridor">学校の廊下</option><option value="classroom">学校の教室</option></optgroup><optgroup label="広い空間"><option value="road">道</option><option value="forest">森</option><option value="free">フリースペース</option></optgroup><option value="ppl">人物のみ</option></select><span id="gz">地面 <input id="gw" type="number" value="20" min="2" max="200" step="1">×<input id="gdp" type="number" value="20" min="2" max="200" step="1">m</span>
 吸着<select id="gs"><option>0.1</option><option>0.25</option><option>0.5</option><option>1</option><option>5</option></select>m
 <select id="rs"><option value="90">回転90°</option><option value="45">45°</option><option value="15">15°</option><option value="0">なし</option></select>
-<button id="sty">線画</button><button id="un">取り消し</button><button id="rd">やり直し</button><button id="fsv">ファイル保存</button><button id="fld">ファイル読込</button><button id="fnw">新規</button><input type="file" id="ff" accept=".json,application/json" hidden><button id="cp" style="margin-left:auto;opacity:.75">© しゅうさく</button></div>
+<button id="sty">線画</button><button id="un">取り消し</button><button id="rd">やり直し</button><button id="fsv">ファイル保存</button><button id="fld">ファイル読込</button><button id="fnw">新規</button><input type="file" id="ff" accept=".json,application/json" hidden><a class="btn" id="mn" href="manual.html" target="_blank" rel="noopener" style="margin-left:auto">使い方</a><button id="cp" style="opacity:.75">© しゅうさく</button></div>
 <div id="main">
 <div class="side" id="lp"><div class="row"><button id="tb0" class="on" style="flex:1">追加</button><button id="tb1" style="flex:1">リスト</button></div>
 <div class="tp" id="tp0"><div id="add"></div>
@@ -390,5 +390,3 @@ setInterval(()=>{try{localStorage.setItem('mlayout3d',JSON.stringify(snap()))}ca
 
 (function loop(){requestAnimationFrame(loop);fade();draw();if(++fc%15==0){tick();rl();if(document.activeElement!==$('eh'))$('eh').value=Math.round(C.position.y*100)}const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
 </script></body></html>
-
-</body></html>
