@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <!--
 © 2026 しゅうさく  All rights reserved.
@@ -122,7 +123,7 @@ function recolor(){const m={Y:0x2266ff,Z:0x22cc44,XY:0x22cc44,XZ:0x2266ff};T.tra
 const stage=new THREE.Group(),objs=new THREE.Group();S.add(stage,objs);
 const tv=new THREE.Vector3(),tv2=new THREE.Vector3();
 const GL=new Set(['窓','引き戸']);
-function fade(){objs.children.forEach(g=>{const a=g.userData.n;if(!a){if(GL.has(g.userData.k))g.traverse(m=>{if(m.isMesh&&m.userData.op){const M=m.material;M.transparent=true;M.opacity=m.userData.op;M.depthWrite=false}});return}const out=tv.copy(C.position).sub(g.position).dot(tv2.set(a[0],a[1],a[2]).applyQuaternion(g.children[0].quaternion))<0;g.userData.faded=out;g.traverse(m=>{if(!m.material)return;const M=m.material,op=m.userData.op||1;M.transparent=true;M.opacity=m.isMesh?(out?.07:1)*op:(out?.15:1);if(m.isMesh)M.depthWrite=!out&&op==1})})}
+function fade(){const lo=C.position.y<=0;stage.children.forEach(m=>{if(m.userData.rd)m.traverse(x=>{if(!x.material)return;const M=x.material;M.transparent=true;M.opacity=lo?.12:1;M.depthWrite=!lo})});objs.children.forEach(g=>{const a=g.userData.n;if(!a){if(GL.has(g.userData.k))g.traverse(m=>{if(m.isMesh&&m.userData.op){const M=m.material;M.transparent=true;M.opacity=m.userData.op;M.depthWrite=false}});return}const out=tv.copy(C.position).sub(g.position).dot(tv2.set(a[0],a[1],a[2]).applyQuaternion(g.children[0].quaternion))<0;g.userData.faded=out;g.traverse(m=>{if(!m.material)return;const M=m.material,op=m.userData.op||1;M.transparent=true;M.opacity=m.isMesh?(out?.07:1)*op:(out?.15:1);if(m.isMesh)M.depthWrite=!out&&op==1})})}
 let line=true,grid,sel=null,cur=[4,4],step=.1,mm=35,mode0='translate',gw=20,gd=20,curSt='room';
 function att(){if(!sel||sel.userData.lk||sel.userData.hid||fish)T.detach();else T.attach(mode0=='translate'?sel:sel.children[0])}
 const WH=new THREE.Color(1,1,1);
@@ -143,9 +144,9 @@ const box=(w,h,d,c,x,y,z)=>mk(new THREE.BoxGeometry(w,h,d),c,x,y,z);
 const G=(...a)=>{const g=new THREE.Group();a.forEach(m=>g.add(m));return g};
 function setStyle(){[stage,objs].forEach(g=>g.traverse(o=>{if(o.isMesh){if(o.userData.imp){o.material=line||!o._om?mat(0xdddddd):o._om;o.children.forEach(l=>l.visible=line);return}o.material=mat(o.userData.c);o.children.forEach(l=>l.visible=line);if(o.userData.fl){o.material.transparent=true;o.material.opacity=.4;o.material.depthWrite=false}}}))}
 function applyGrid(){step=parseFloat($('gs').value);if(grid){S.remove(grid);grid.geometry.dispose()}const[W,D]=cur;let s=step;while(Math.max(W,D)/s>200)s*=5;const p=[],ln=(a,b,c,d)=>p.push(a,0,b,c,0,d);for(let x=-W/2;x<=W/2+1e-6;x+=s)ln(x,-D/2,x,D/2);for(let z=-D/2;z<=D/2+1e-6;z+=s)ln(-W/2,z,W/2,z);ln(W/2,-D/2,W/2,D/2);ln(-W/2,D/2,W/2,D/2);const gm=new THREE.BufferGeometry();gm.setAttribute('position',new THREE.Float32BufferAttribute(p,3));grid=new THREE.LineSegments(gm,new THREE.LineBasicMaterial({color:0xbbbbbb}));grid.position.y=.005;S.add(grid);T.setTranslationSnap(step);T.setScaleSnap(.01)}
-const ST={room:[4,4,2.6,.1],ldk:[7,5,2.6,.1],mansion:[12,9,4.5,.5],road:[30,30,0,1],forest:[30,30,0,1],ppl:[10,10,0,.5],corridor:[18,2.7,3,.1],classroom:[9,7.5,3,.1],free:[20,20,0,.5]};
+const ST={room:[3.6,2.7,2.4,.1],ldk:[7,5,2.6,.1],mansion:[12,9,4.5,.5],road:[30,30,0,1],forest:[30,30,0,1],ppl:[10,10,0,.5],corridor:[18,2.7,3,.1],classroom:[9,7.5,3,.1],free:[20,20,0,.5]};
 const FL=0x7fb35f,WL=0x888888;
-const FLC={corridor:0xcfc3a8,classroom:0xd8c39a},CAM={corridor:[[-8.2,1.5,.2],[0,1.4,0]],classroom:[[4.1,1.6,.3],[-3,1.3,.3]]};
+const FLC={corridor:0xcfc3a8,classroom:0xd8c39a},CAM={corridor:[[-8.2,1.5,.2],[0,1.4,0]],classroom:[[4.1,1.6,.3],[-3,1.3,.3]],room:[[.2,1.6,4],[0,1,-.3]]};
 function mkFloor(n,W,D){stage.clear();const fl=box(W,.02,D,FLC[n]||FL,0,-.01,0);fl.userData.fl=1;stage.add(fl)}
 function buildCorridor(W,D,H){const put=(k,a,n,x,z)=>{const g=wrap(k,a,n,1);g.position.set(x,0,z);objs.add(g)};
 const dx=[-7.5,-1.8,1.8,7.5],wx=[0,1,2,3,4,5,6,7].map(i=>-W/2+1.125+2.25*i);
@@ -167,14 +168,26 @@ wx.forEach(x=>put('窓',[1.8,1.5,.9],[0,0,-1],x,D/2));
 const bx=-W/2+.05;
 put('黒板',[4.5,1.2,.9],[0,0,1],bx,0,90);
 put('教壇',[5,1,.15],null,bx,0,90);
-put('教卓',[1.2,.6,.74],null,bx+.6,0,90,.15);
+put('教卓',[1,.6,.95],null,bx+.6,0,90,.15);
 put('掃除用具ロッカー',[.9,.5,1.8],null,W/2-.3,-(D/2-.55),-90);
 [-1.8,-.6,.6,1.8].forEach(x=>[-2.4,-1.2,0,1.2,2.4].forEach(z=>{put('学習机',[],null,x,z,-90);put('学習椅子',[],null,x+.52,z,-90)}))}
+// 個室: 6畳(約3.6m×2.7m)、天井高2.4m。ベッドは左壁際(頭が奥)、棚はベッドの足元、机と窓は奥の壁、扉は右の壁
+function buildRoom(W,D,H){const Y=new THREE.Vector3(0,1,0);
+const put=(k,a,n,x,z,deg)=>{const g=wrap(k,a,n,1);g.position.set(x,0,z);if(deg)g.children[0].quaternion.setFromAxisAngle(Y,deg*rad);objs.add(g)};
+put('壁',[.1,H,D,WL],[1,0,0],-W/2,0);
+put('開口壁',[W,H,.1,WL,[[.9,1.2,.9,2]]],[0,0,1],0,-D/2);
+put('開口壁',[D,H,.1,WL,[[-.75,.9,0,2.05]]],[0,0,-1],W/2,0,90);
+put('窓',[1.2,1.1,.9],[0,0,1],.9,-D/2);
+put('ドア',[],[0,0,1],W/2,.75,-90);
+put('ベッド',[],null,-1.25,-.3);
+put('棚',[.58,1.2,.3],null,-W/2+.2,1,90);
+put('机',[],null,.9,-D/2+.35);
+put('椅子',[],null,.9,-.4,180)}
 function setStage(n){curSt=n;[...objs.children].forEach(o=>{if(o.userData.gen)objs.remove(o)});select(null);let[W,D,H,g]=ST[n];if(n=='free'){W=gw;D=gd}cur=[W,D];
 mkFloor(n,W,D);
-if(H&&n!='corridor'&&n!='classroom')[[W,H,.1,0,-D/2,[0,0,1]],[.1,H,D,-W/2,0,[1,0,0]],[.1,H,D,W/2,0,[-1,0,0]]].forEach(([w,h,d,x,z,nn])=>{const g=wrap('壁',[w,h,d,WL],nn,1);g.position.set(x,0,z);objs.add(g)});
-if(n=='corridor')buildCorridor(W,D,H);if(n=='classroom')buildClassroom(W,D,H);
-if(n=='road'){stage.add(box(30,.03,5,0x666666,0,0,0));[[-8,-9],[0,-10],[9,-9],[-6,9],[8,9]].forEach(([x,z],i)=>{const h=6+i*2,g=wrap('ビル',[5+i%3*2,h,6,WL],null,1);g.position.set(x,0,z);objs.add(g)})}
+if(H&&n!='corridor'&&n!='classroom'&&n!='room')[[W,H,.1,0,-D/2,[0,0,1]],[.1,H,D,-W/2,0,[1,0,0]],[.1,H,D,W/2,0,[-1,0,0]]].forEach(([w,h,d,x,z,nn])=>{const g=wrap('壁',[w,h,d,WL],nn,1);g.position.set(x,0,z);objs.add(g)});
+if(n=='corridor')buildCorridor(W,D,H);if(n=='classroom')buildClassroom(W,D,H);if(n=='room')buildRoom(W,D,H);
+if(n=='road'){const rd=box(30,.03,5,0x666666,0,0,0);rd.userData.rd=1;stage.add(rd);[[-8,-9],[0,-10],[9,-9],[-6,9],[8,9]].forEach(([x,z],i)=>{const h=6+i*2,g=wrap('ビル',[5+i%3*2,h,6,WL],null,1);g.position.set(x,0,z);objs.add(g)})}
 if(n=='forest'){let s=7;const r=()=>(s=s*16807%2147483647)/2147483647;for(let i=0;i<30;i++){const x=(r()-.5)*28,z=(r()-.5)*28,h=3+r()*3;const g=wrap('木',[h],null,1);g.position.set(x,0,z);objs.add(g)}}
 $('gs').value=g;applyGrid();
 const cm=CAM[n];if(cm){O.target.set(...cm[1]);C.position.set(...cm[0])}else{O.target.set(0,1,0);C.position.set(0,1.5,H?D/2+.8:8)}
@@ -199,7 +212,7 @@ const P={
 'テーブル':()=>G(box(1.2,.04,.7,W0,0,.72,0),...[[-.55,-.3],[.55,-.3],[-.55,.3],[.55,.3]].map(([x,z])=>box(.05,.7,.05,W0,x,.35,z))),
 '椅子':()=>G(box(.45,.04,.45,W0,0,.42,0),box(.45,.45,.04,W0,0,.66,-.2),...[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].map(([x,z])=>box(.04,.4,.04,W0,x,.2,z))),
 'ベッド':()=>G(box(1,.4,2,W0,0,.2,0),box(.6,.12,.35,0xffffff,0,.46,-.75)),
-'棚':()=>G(box(.9,1.8,.3,W0,0,.9,0)),
+'棚':(w=.9,h=1.8,d=.3)=>G(box(w,h,d,W0,0,h/2,0)),
 'ソファ':()=>G(box(1.8,.4,.8,W0,0,.2,0),box(1.8,.4,.2,W0,0,.6,-.3)),
 'ドア':()=>G(box(.9,2,.05,W0,0,1,0),mk(new THREE.SphereGeometry(.05,8,6),0x444444,.34,1,.055),mk(new THREE.SphereGeometry(.05,8,6),0x444444,.34,1,-.055)),
 '窓':(w=1.2,h=1,y0=.9)=>G(glass(w,h,.04,0,y0+h/2,0),box(.04,h,.07,W0,0,y0+h/2,0),box(w+.06,.05,.07,W0,0,y0,0),box(w+.06,.05,.07,W0,0,y0+h,0),box(.05,h,.07,W0,-w/2,y0+h/2,0),box(.05,h,.07,W0,w/2,y0+h/2,0)),
@@ -212,7 +225,8 @@ a.push(box(.05,h,.12,0xaaaaaa,-w/2-.025,h/2,0),box(.05,h,.12,0xaaaaaa,w/2+.025,h
 'クラスプレート':(w=.8,h=.22,y=2.3)=>G(box(w,h,.03,0xf2f2e0,0,y,0)),
 '黒板':(w=4.5,h=1.2,y0=.9)=>G(box(w,h,.03,0x2f5a46,0,y0+h/2,.015),box(w+.08,.04,.05,W0,0,y0+h+.02,.025),box(.04,h,.05,W0,-w/2-.02,y0+h/2,.025),box(.04,h,.05,W0,w/2+.02,y0+h/2,.025),box(w,.03,.1,W0,0,y0-.015,.05)),
 '教壇':(w=5,d=1,h=.15)=>G(box(w,h,d,0xb8956a,0,h/2,d/2)),
-'教卓':(w=1.2,d=.6,h=.74)=>G(box(w,.04,d,0xc9a46a,0,h-.02,0),box(.4,h-.04,d-.04,W0,-w/2+.22,(h-.04)/2,0),box(.04,h-.04,d-.04,W0,w/2-.04,(h-.04)/2,0),box(w-.48,.44,.03,W0,.18,.48,d/2-.03),...[.58,.4,.22].map(y=>box(.2,.02,.02,0x444444,-w/2+.22,y,-d/2-.01))),
+'教卓':(w=1,d=.6,h=.95)=>{const t=.03,f=.08,c=0x8a5a35,c2=0x9a6a42,bh=h-.04-f,by=f+bh/2;return G(box(w+.06,.04,d+.06,0x6e4a2c,0,h-.02,0),box(t,bh,d,c,-(w/2-t/2),by,0),box(t,bh,d,c,w/2-t/2,by,0),box(w-2*t,bh,.03,c,0,by,d/2-.015),box(.05,bh,.015,c2,0,by,d/2+.0075),box(w-2*t,.07,.03,c2,0,h-.075,-d/2+.015),box(w-2*t,.06,.03,c2,0,f+.03,-d/2+.015),...[-1,1].flatMap(a=>[-1,1].map(b=>box(.07,f,.07,c2,a*(w/2-.035),f/2,b*(d/2-.035)))))},
+'机':(w=1.2,d=.6,h=.74)=>G(box(w,.04,d,0xc9a46a,0,h-.02,0),box(.4,h-.04,d-.04,W0,-w/2+.22,(h-.04)/2,0),box(.04,h-.04,d-.04,W0,w/2-.04,(h-.04)/2,0),box(w-.48,.44,.03,W0,.18,.48,-d/2+.03),...[.58,.4,.22].map(y=>box(.2,.02,.02,0x444444,-w/2+.22,y,d/2+.01))),
 '学習机':(w=.65,d=.45,h=.7)=>G(box(w,.03,d,0xe3c590,0,h-.015,0),box(w-.08,.14,d-.06,0xcfd2d6,0,h-.1,0),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,b])=>box(.03,h-.03,.03,0x888888,a*(w/2-.03),(h-.03)/2,b*(d/2-.03)))),
 '学習椅子':(h=.42)=>G(box(.38,.03,.38,0xe3c590,0,h-.015,0),...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,b])=>box(.03,h-.03,.03,0x888888,a*.16,(h-.03)/2,b*.16)),box(.03,.3,.03,0x888888,-.15,h+.15,-.17),box(.03,.3,.03,0x888888,.15,h+.15,-.17),box(.34,.14,.025,0xe3c590,0,h+.2,-.185)),
 '掃除用具ロッカー':(w=.9,d=.5,h=1.8,c=0x8fa3b5)=>G(box(w,h,d,c,0,h/2,0),...[-1,1].flatMap(a=>[box(w/2-.03,h-.1,.02,0xa9bccb,a*w/4,h/2,d/2+.01),box(.03,.2,.03,0x444444,a*.05,h*.55,d/2+.03),box(.3,.02,.02,0x555555,a*w/4,h-.18,d/2+.025),box(.3,.02,.02,0x555555,a*w/4,h-.24,d/2+.025)])),
@@ -251,7 +265,7 @@ const t=O.target,g=wrap('3Dモデル',[id],null,false);g.position.set(Math.round
 if(MODELS[id].tpl.userData.tri>300000)note('ポリゴン数が多いため、動作が重くなる場合があります')}
 catch(x){note('3Dファイルを読み込めませんでした: '+(x&&x.message||x))}
 $('m3').disabled=false;$('m3').textContent='読込'};
-const CAT=[['基本図形',['立方体','球','円柱','円錐']],['構造',['壁','板','階段','ドア','引き戸','窓','ビル']],['家具',['テーブル','椅子','ベッド','棚','ソファ']],['屋外',['木','植え込み']],['学校',['黒板','教壇','教卓','学習机','学習椅子','掃除用具ロッカー']],['人物',['立ち人','座り人']]];
+const CAT=[['基本図形',['立方体','球','円柱','円錐']],['構造',['壁','板','階段','ドア','引き戸','窓','ビル']],['家具',['テーブル','机','椅子','ベッド','棚','ソファ']],['屋外',['木','植え込み']],['学校',['黒板','教壇','教卓','学習机','学習椅子','掃除用具ロッカー']],['人物',['立ち人','座り人']]];
 function addObj(k){const g0=P[k](),t=O.target,g=new THREE.Group();g.add(g0);g.userData.person=g0.userData.person;g.userData.k=k;g.position.set(Math.round(t.x/step)*step,0,Math.round(t.z/step)*step);if(g.userData.person)g0.scale.setScalar((+$('nh').value||170)/171);objs.add(g);setStyle();select(g);commit()}
 CAT.forEach(([n,ks],ci)=>{const d=document.createElement('details');d.open=true;d.dataset.k='cat'+ci;const sm=document.createElement('summary');sm.textContent=n;d.appendChild(sm);const r=document.createElement('div');r.className='row';d.appendChild(r);ks.forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>addObj(k);r.appendChild(b)});$('add').appendChild(d)});
 function select(g){sel=g;att();const p=g&&g.userData.person;$('hh').style.display=p?'':'none';mzSync();if(p)$('hi').value=Math.round(g.children[0].scale.y*171);recolor();rl()}
@@ -376,3 +390,5 @@ setInterval(()=>{try{localStorage.setItem('mlayout3d',JSON.stringify(snap()))}ca
 
 (function loop(){requestAnimationFrame(loop);fade();draw();if(++fc%15==0){tick();rl();if(document.activeElement!==$('eh'))$('eh').value=Math.round(C.position.y*100)}const p=R.getPixelRatio();FR.forEach(f=>{const g=f.g;if(g)f.cv.getContext('2d').drawImage(R.domElement,g.x*p,g.y*p,g.w*p,g.h*p,0,0,f.cv.width,f.cv.height)})})();
 </script></body></html>
+
+</body></html>
