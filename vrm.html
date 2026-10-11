@@ -51,7 +51,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .empty h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .empty p { margin: 0; color: var(--muted); max-width: 30ch; }
 .stage.drag { outline: 2px dashed var(--accent); outline-offset: -8px; }
-.hint { position: absolute; left: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); z-index: 1; pointer-events: none; }
+.hint { position: absolute; left: 12px; right: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); z-index: 1; pointer-events: none; }
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 18px; min-width: 0; }
 .panel h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.02em; }
@@ -61,19 +61,22 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 button, select, textarea { font: inherit; color: var(--ink); }
 button { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; min-height: 34px; }
 button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button.primary, button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:disabled { opacity: 0.5; cursor: default; }
 button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 select { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; min-height: 36px; }
 .axis { display: grid; grid-template-columns: 16px minmax(0, 1fr) 52px; gap: 10px; align-items: center; }
 .axis b { font-family: var(--font-mono); font-weight: 500; color: var(--muted); }
 .axis output { font-family: var(--font-mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
+.chk { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--accent); }
 textarea { width: 100%; min-height: 84px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; font-family: var(--font-mono); font-size: 11px; }
 .status { min-height: 1.6em; color: var(--muted); font-size: 12px; }
+.ver { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 input[type=file] { display: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-
 </head>
 <body>
 <main class="app">
@@ -83,7 +86,7 @@ input[type=file] { display: none; }
       <p>.vrm ファイルをここへドロップするか、下のボタンから選びます。</p>
       <button class="primary" id="pick2" type="button">ファイルを選ぶ</button>
     </div>
-    <div class="hint">点をタップで関節を選択 → 輪をドラッグで回す / 空きをドラッグで視点回転</div>
+    <div class="hint" id="hint"></div>
   </section>
 
   <aside class="panel">
@@ -93,7 +96,18 @@ input[type=file] { display: none; }
       <span class="lbl">モデル</span>
       <div class="row"><button id="pick" type="button">VRMを開く</button></div>
       <input type="file" id="file" accept=".vrm,.glb">
+      <div class="ver" id="ver">形式: 未読み込み</div>
       <div class="status" id="status" role="status" aria-live="polite">未読み込み</div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl">操作のしかた</span>
+      <div class="row">
+        <button type="button" id="modeGrab" class="on">つかんで動かす</button>
+        <button type="button" id="modeRing">輪で回す</button>
+      </div>
+      <label class="chk" for="limitOn"><input type="checkbox" id="limitOn" checked>関節の可動域を守る（つかんで動かすとき）</label>
+      <div class="row"><button type="button" id="toggleMarkers">関節の点を表示/非表示</button></div>
     </div>
 
     <div class="sec">
@@ -102,12 +116,11 @@ input[type=file] { display: none; }
         <button type="button" data-preset="t">Tポーズ</button>
         <button type="button" data-preset="a">Aポーズ</button>
         <button type="button" data-preset="rest">腕を下ろす</button>
-        <button type="button" id="toggleMarkers">関節の点を表示/非表示</button>
       </div>
     </div>
 
     <div class="sec">
-      <label for="bone">ボーン</label>
+      <label for="bone">ボーン（数値で細かく調整）</label>
       <select id="bone"></select>
       <div class="axis"><b>X</b><input type="range" id="rx" min="-180" max="180" step="1" value="0"><output id="ox">0°</output></div>
       <div class="axis"><b>Y</b><input type="range" id="ry" min="-180" max="180" step="1" value="0"><output id="oy">0°</output></div>
@@ -124,8 +137,12 @@ input[type=file] { display: none; }
 
     <div class="sec">
       <span class="lbl">書き出し</span>
-      <div class="row"><button type="button" class="primary" id="exportObj">OBJで書き出す（ZIP）</button></div>
-      <div class="status">いまのポーズの形（.obj）・色の情報（.mtl）・模様の画像（.png）を、1つのZIPにまとめて保存します。解凍してできたファイルを、全部同時に選んで読み込んでください。</div>
+      <div class="row">
+        <button type="button" class="primary" id="exportVrm">VRMで書き出す</button>
+        <button type="button" id="exportObj">OBJで書き出す（ZIP）</button>
+      </div>
+      <div class="status">VRM: 読み込んだVRMの関節の向きだけを今のポーズに書き換えて、.vrm 1ファイルで保存します。Tポーズ以外のVRMはVRMの決まりから外れるため、アップロード先によっては受け付けられない場合があります。</div>
+      <div class="status">OBJ: 形（.obj）・色の情報（.mtl）・模様の画像（.png）を1つのZIPにまとめます。解凍後、全部同時に選んで読み込んでください。</div>
     </div>
   </aside>
 </main>
@@ -154,32 +171,53 @@ const GROUPS = [
   ['右脚', [['rightUpperLeg','右太もも'],['rightLowerLeg','右すね'],['rightFoot','右足'],['rightToes','右つま先']]],
 ];
 const KEY = 'vrm-pose-fixed-v1';
+const D2R = Math.PI / 180;
 const $ = id => document.getElementById(id);
 const stage = $('stage'), statusEl = $('status');
-let pose = {};           // { boneName: [x,y,z] } 度
+
+let pose = {};            // { ボーン名: [x,y,z] } 度。正面が+Z・キャラの左が+Xの座標系（VRM1.0と同じ向き）で持つ
 let current = 'head';
 let vrm = null;
 let modelName = 'model';
+let origBuf = null;       // 読み込んだVRMファイルの中身（VRM書き出しで使う）
+let isV0 = false;         // VRM 0.x かどうか
+let mode = 'grab';        // 'grab' = つかんで動かす / 'ring' = 輪で回す
+let limitsOn = true;
+let markersVisible = true;
 
 try { const s = localStorage.getItem(KEY); if (s) pose = JSON.parse(s) || {}; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pose)); } catch (e) {} };
 const say = t => { statusEl.textContent = t; };
 
-// --- three.js ---
+// ---------- 座標系の統一（VRM 0.x は向きが逆なので、ノードに書くときだけ補正する） ----------
+const frameFix = q => { if (isV0) { q.x = -q.x; q.z = -q.z; } return q; };   // 元に戻すのも同じ操作
+const _eu = new THREE.Euler();
+function poseToQuat(r) {
+  _eu.set(r[0] * D2R, r[1] * D2R, r[2] * D2R, 'XYZ');
+  return frameFix(new THREE.Quaternion().setFromEuler(_eu));
+}
+function nodeToPose(node) {
+  const q = frameFix(node.quaternion.clone());
+  _eu.setFromQuaternion(q, 'XYZ');
+  return [_eu.x, _eu.y, _eu.z].map(a => Math.round(a / D2R * 10) / 10);
+}
+
+// ---------- three.js ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 stage.prepend(renderer.domElement);
+const dom = renderer.domElement;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
 camera.position.set(0, 1.2, 3.2);
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, dom);
 controls.target.set(0, 1, 0);
 controls.enableDamping = true;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8890a0, 1.1));
 const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(1.5, 3, 2.5); scene.add(sun);
 
-// 選んだボーンに回転ギズモを付け、ドラッグで直接回す
-const tc = new TransformControls(camera, renderer.domElement);
+// 輪で回すモード用のギズモ
+const tc = new TransformControls(camera, dom);
 tc.setMode('rotate'); tc.setSpace('local'); tc.setSize(0.8);
 scene.add(tc);
 let tcBusy = false;
@@ -189,7 +227,7 @@ tc.addEventListener('dragging-changed', e => {
 });
 tc.addEventListener('objectChange', () => {
   const node = tc.object; if (!node) return;
-  pose[current] = [node.rotation.x, node.rotation.y, node.rotation.z].map(a => Math.round(a / D2R));
+  pose[current] = nodeToPose(node);
   showBone(); save(); syncJson();
 });
 
@@ -209,19 +247,149 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 
-// --- ポーズ適用 ---
-const D2R = Math.PI / 180;
+// ---------- ポーズ適用 ----------
 function applyPose() {
   if (!vrm) return;
   for (const [, list] of GROUPS) for (const [name] of list) {
     const node = vrm.humanoid.getNormalizedBoneNode(name);
     if (!node) continue;
-    const r = pose[name] || [0, 0, 0];
-    node.rotation.set(r[0] * D2R, r[1] * D2R, r[2] * D2R);
+    const r = pose[name];
+    if (r) node.quaternion.copy(poseToQuat(r)); else node.quaternion.identity();
   }
 }
 
-// --- UI ---
+// ---------- 関節の可動域（左側を基準に定義。右側は左右反転して同じ表を使う） ----------
+// a: 骨がまっすぐ伸びている向き / tw: その軸まわりのねじり / x,y,z: 軸と垂直な方向への振りの範囲（度）
+// 座標は 正面=+Z・上=+Y・キャラの左=+X。数値は一般的な人体の目安で、モデルや作風に合わせて調整できる。
+const LIM = {
+  shoulder:   { a: [1, 0, 0],  tw: [-8, 8],    y: [-25, 15],   z: [-8, 30] },
+  upperArm:   { a: [1, 0, 0],  tw: [-90, 90],  y: [-130, 60],  z: [-100, 160] },
+  lowerArm:   { a: [1, 0, 0],  tw: [-90, 90],  y: [-150, 3],   z: [-5, 5] },
+  hand:       { a: [1, 0, 0],  tw: [-35, 35],  y: [-30, 30],   z: [-70, 70] },
+  upperLeg:   { a: [0, -1, 0], tw: [-45, 45],  x: [-125, 25],  z: [-30, 50] },
+  lowerLeg:   { a: [0, -1, 0], tw: [-10, 10],  x: [0, 150],    z: [-5, 5] },
+  foot:       { a: [0, 0, 1],  tw: [-20, 20],  x: [-25, 50],   y: [-25, 25] },
+  toes:       { a: [0, 0, 1],  tw: [-5, 5],    x: [-40, 60],   y: [-5, 5] },
+  spine:      { a: [0, 1, 0],  tw: [-25, 25],  x: [-20, 45],   z: [-25, 25] },
+  chest:      { a: [0, 1, 0],  tw: [-20, 20],  x: [-15, 30],   z: [-15, 15] },
+  upperChest: { a: [0, 1, 0],  tw: [-15, 15],  x: [-10, 20],   z: [-12, 12] },
+  neck:       { a: [0, 1, 0],  tw: [-60, 60],  x: [-40, 40],   z: [-35, 35] },
+  head:       { a: [0, 1, 0],  tw: [-45, 45],  x: [-30, 40],   z: [-30, 30] },
+};
+const clampN = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const wrapPi = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const mirrorQ = q => new THREE.Quaternion(q.x, -q.y, -q.z, q.w);
+
+// ねじり（骨の軸まわり）と振り（軸の向きの変化）に分け、それぞれ範囲内に収める
+function clampQ(q, L) {
+  const a = new THREE.Vector3(L.a[0], L.a[1], L.a[2]);
+  const d = q.x * a.x + q.y * a.y + q.z * a.z;
+  const tw = new THREE.Quaternion(a.x * d, a.y * d, a.z * d, q.w);
+  let twAng = 0;
+  if (tw.length() < 1e-9) tw.set(0, 0, 0, 1); else { tw.normalize(); twAng = wrapPi(2 * Math.atan2(d, q.w)); }
+  const sw = q.clone().multiply(tw.clone().invert());
+  if (sw.w < 0) { sw.x = -sw.x; sw.y = -sw.y; sw.z = -sw.z; sw.w = -sw.w; }
+  const s = Math.hypot(sw.x, sw.y, sw.z);
+  const rv = new THREE.Vector3();
+  if (s > 1e-9) rv.set(sw.x, sw.y, sw.z).multiplyScalar(2 * Math.atan2(s, sw.w) / s);
+  for (const k of ['x', 'y', 'z']) if (L[k]) rv[k] = clampN(rv[k], L[k][0] * D2R, L[k][1] * D2R);
+  twAng = clampN(twAng, L.tw[0] * D2R, L.tw[1] * D2R);
+  const swc = new THREE.Quaternion(), m = rv.length();
+  if (m > 1e-9) swc.setFromAxisAngle(rv.clone().divideScalar(m), m);
+  return swc.multiply(new THREE.Quaternion().setFromAxisAngle(a, twAng));
+}
+function clampBone(name, qLocal) {
+  const base = name.replace(/^(left|right)/, '');
+  const L = LIM[base.charAt(0).toLowerCase() + base.slice(1)];
+  if (!L) return qLocal;
+  const right = name.startsWith('right');
+  let p = frameFix(qLocal.clone());
+  if (right) p = mirrorQ(p);
+  p = clampQ(p, L);
+  if (right) p = mirrorQ(p);
+  return frameFix(p);
+}
+
+// ---------- つかんで動かす（CCD方式のIK） ----------
+// つかんだ関節の点を動かしたとき、どの関節を回して追いかけさせるか（近い順）
+function chainFor(name) {
+  if (!vrm) return null;
+  let list = null;
+  const m = name.match(/^(left|right)(.+)$/);
+  if (m) {
+    const T = { Hand: ['LowerArm', 'UpperArm'], LowerArm: ['UpperArm'], UpperArm: ['Shoulder'],
+                Foot: ['LowerLeg', 'UpperLeg'], LowerLeg: ['UpperLeg'], Toes: ['Foot'] };
+    if (T[m[2]]) list = T[m[2]].map(x => m[1] + x);
+  } else {
+    const T = { head: ['neck', 'upperChest', 'chest', 'spine'], neck: ['upperChest', 'chest', 'spine'],
+                upperChest: ['chest', 'spine'], chest: ['spine'] };
+    list = T[name];
+  }
+  if (!list) return null;
+  const ok = list.filter(n => vrm.humanoid.getNormalizedBoneNode(n));
+  return ok.length ? ok : null;
+}
+
+const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qd = new THREE.Quaternion();
+// 関節を、世界座標での回転 dq だけ回す（可動域の制限つき）
+function applyDelta(j, dq) {
+  j.node.getWorldQuaternion(_qa);
+  j.node.parent.getWorldQuaternion(_qb).invert();
+  let local = _qb.multiply(_qd.copy(dq).multiply(_qa));
+  if (limitsOn) local = clampBone(j.n, local);
+  j.node.quaternion.copy(local);
+  j.node.updateMatrixWorld(true);
+}
+// 腕・脚（2本の骨）は、まず「届く形」を計算で求めておく。肘・膝がどちらへ曲がるかは今の曲がり方を引き継ぎ、伸びているときは自然な向きにする
+function twoBoneInit(joints, eff, target) {
+  const mid = joints[0], root = joints[1];
+  const m = mid && mid.n.match(/^(left|right)Lower(Arm|Leg)$/);
+  if (!m || !root || !/^(left|right)Upper(Arm|Leg)$/.test(root.n)) return;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z), dq = new THREE.Quaternion();
+  const A = root.node.getWorldPosition(V(0, 0, 0)), B = mid.node.getWorldPosition(V(0, 0, 0)), C = eff.getWorldPosition(V(0, 0, 0));
+  const l1 = A.distanceTo(B), l2 = B.distanceTo(C);
+  const u = target.clone().sub(A); let d = u.length();
+  if (l1 < 1e-6 || l2 < 1e-6 || d < 1e-6) return;
+  u.divideScalar(d);
+  d = Math.min(Math.max(d, Math.abs(l1 - l2) + 1e-3), l1 + l2 - 1e-3);
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(l1 * l1 - a * a, 0));
+  const AB = B.clone().sub(A), ac = C.clone().sub(A).normalize();
+  let pole = AB.clone().sub(ac.multiplyScalar(AB.dot(ac)));  // 今の肘・膝の出っぱり方向
+  if (pole.length() < 0.02) {                                // ほぼ伸びている: 自然な曲がり方向（腕は肘が後ろ下、脚は膝が前）
+    const out = m[1] === 'left' ? 1 : -1;
+    pole = m[2] === 'Arm' ? V(0.4 * out, -0.7, -0.6) : V(0.1 * out, 0, 1);
+  }
+  const p = pole.sub(u.clone().multiplyScalar(pole.dot(u)));
+  if (p.length() < 1e-6) return;
+  p.normalize();
+  const Bn = A.clone().add(u.clone().multiplyScalar(a)).add(p.multiplyScalar(h));
+  applyDelta(root, dq.setFromUnitVectors(AB.clone().normalize(), Bn.clone().sub(A).normalize()));
+  mid.node.getWorldPosition(B); eff.getWorldPosition(C);
+  const v1 = C.clone().sub(B), v2 = target.clone().sub(B);
+  if (v1.lengthSq() > 1e-10 && v2.lengthSq() > 1e-10) applyDelta(mid, dq.setFromUnitVectors(v1.normalize(), v2.normalize()));
+}
+function solveIK(effName, chain, target) {
+  const eff = vrm.humanoid.getNormalizedBoneNode(effName);
+  const joints = chain.map(n => ({ n, node: vrm.humanoid.getNormalizedBoneNode(n) })).filter(j => j.node);
+  if (!eff || !joints.length) return;
+  vrm.scene.updateMatrixWorld(true);
+  twoBoneInit(joints, eff, target);
+  const dq = new THREE.Quaternion();
+  for (let it = 0; it < 24; it++) {                          // 仕上げに、少しずつ目標へ寄せる（CCD法）
+    for (const j of joints) {
+      j.node.getWorldPosition(_pa); eff.getWorldPosition(_pb);
+      _v1.copy(_pb).sub(_pa); _v2.copy(target).sub(_pa);
+      if (_v1.lengthSq() < 1e-10 || _v2.lengthSq() < 1e-10) continue;
+      applyDelta(j, dq.setFromUnitVectors(_v1.normalize(), _v2.normalize()));
+    }
+    eff.getWorldPosition(_pb);
+    if (_pb.distanceTo(target) < 5e-4) break;
+  }
+  for (const j of joints) pose[j.n] = nodeToPose(j.node);
+}
+
+// ---------- UI ----------
 const sel = $('bone');
 for (const [g, list] of GROUPS) {
   const og = document.createElement('optgroup'); og.label = g;
@@ -229,11 +397,11 @@ for (const [g, list] of GROUPS) {
   sel.appendChild(og);
 }
 sel.value = current;
-const sliders = ['rx','ry','rz'].map(id => $(id));
-const outs = ['ox','oy','oz'].map(id => $(id));
+const sliders = ['rx', 'ry', 'rz'].map(id => $(id));
+const outs = ['ox', 'oy', 'oz'].map(id => $(id));
 function showBone() {
   const r = pose[current] || [0, 0, 0];
-  sliders.forEach((s, i) => { s.value = r[i]; outs[i].textContent = r[i] + '°'; });
+  sliders.forEach((s, i) => { s.value = r[i]; outs[i].textContent = Math.round(r[i]) + '°'; });
 }
 sel.addEventListener('change', () => selectBone(sel.value));
 sliders.forEach((s, i) => s.addEventListener('input', () => {
@@ -247,8 +415,8 @@ $('resetAll').onclick = () => { pose = {}; showBone(); applyPose(); save(); sync
 
 const PRESETS = {
   t: {},
-  a: { leftUpperArm: [0,0,-55], rightUpperArm: [0,0,55] },
-  rest: { leftUpperArm: [0,0,-78], rightUpperArm: [0,0,78], leftLowerArm: [0,-8,0], rightLowerArm: [0,8,0] },
+  a: { leftUpperArm: [0, 0, -55], rightUpperArm: [0, 0, 55] },
+  rest: { leftUpperArm: [0, 0, -78], rightUpperArm: [0, 0, 78], leftLowerArm: [0, -8, 0], rightLowerArm: [0, 8, 0] },
 };
 document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
   pose = JSON.parse(JSON.stringify(PRESETS[b.dataset.preset]));
@@ -267,15 +435,14 @@ $('apply').onclick = () => {
     const o = JSON.parse(jsonEl.value);
     if (!o || typeof o !== 'object' || Array.isArray(o)) throw 0;
     const clean = {};
-    for (const k in o) if (Array.isArray(o[k]) && o[k].length === 3 && o[k].every(Number.isFinite)) clean[k] = o[k].map(Math.round);
+    for (const k in o) if (Array.isArray(o[k]) && o[k].length === 3 && o[k].every(Number.isFinite)) clean[k] = o[k];
     pose = clean; showBone(); applyPose(); save(); say('ポーズを読み込みました');
   } catch (e) { say('読み込めません。コピーしたポーズデータを貼り付けてください'); }
 };
 
-// --- 関節マーカー（タップでボーン選択） ---
+// ---------- 関節の点（つかむ場所） ----------
 const markers = [];
-let markersVisible = true;
-const markerGeo = new THREE.SphereGeometry(0.02, 12, 8);
+const markerGeo = new THREE.SphereGeometry(0.022, 14, 10);
 function buildMarkers() {
   markers.length = 0;
   for (const [, list] of GROUPS) for (const [name] of list) {
@@ -289,7 +456,7 @@ function buildMarkers() {
 function paintMarkers() {
   for (const m of markers) {
     const on = m.userData.bone === current;
-    m.material.color.set(on ? 0xff7a1a : 0x2c58d6);
+    m.material.color.set(on ? 0xff7a1a : (chainFor(m.userData.bone) || mode === 'ring' ? 0x2c58d6 : 0x8a93a6));
     m.scale.setScalar(on ? 1.5 : 1);
   }
 }
@@ -297,43 +464,162 @@ function selectBone(name) {
   current = name; sel.value = name; showBone(); paintMarkers();
   if (!vrm) return;
   const node = vrm.humanoid.getNormalizedBoneNode(name);
-  if (node) tc.attach(node); else tc.detach();
+  if (node && mode === 'ring') tc.attach(node); else tc.detach();
 }
-const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-let downAt = null;
-renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
-renderer.domElement.addEventListener('pointerup', e => {
-  const d = downAt; downAt = null;
-  if (!d || tcBusy || !vrm || !markersVisible) return;
-  if (Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 5) return;
-  const rc = renderer.domElement.getBoundingClientRect();
-  ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
-  ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObjects(markers, false)[0];
-  if (hit) selectBone(hit.object.userData.bone);
-});
+function setMode(m) {
+  mode = m;
+  $('modeGrab').classList.toggle('on', m === 'grab');
+  $('modeRing').classList.toggle('on', m === 'ring');
+  $('hint').textContent = m === 'grab'
+    ? '点をドラッグして関節を動かす（手・足・肘・膝・頭など）/ 空きをドラッグで視点回転'
+    : '点をタップして関節を選ぶ → 出てきた輪をドラッグして回す / 空きをドラッグで視点回転';
+  selectBone(current);
+}
+$('modeGrab').onclick = () => setMode('grab');
+$('modeRing').onclick = () => setMode('ring');
+$('limitOn').onchange = e => { limitsOn = e.target.checked; };
 $('toggleMarkers').onclick = () => {
   markersVisible = !markersVisible;
   markers.forEach(m => { m.visible = markersVisible; });
   tc.visible = tc.enabled = markersVisible;
 };
 
-// --- VRM 読み込み ---
+// 画面上の点との距離で選ぶ（指でも当てやすいように広めに判定）
+const _pv = new THREE.Vector3();
+function pickMarker(e) {
+  const rc = dom.getBoundingClientRect();
+  let best = null, bd = e.pointerType === 'touch' ? 30 : 18;
+  for (const m of markers) {
+    if (!m.visible) continue;
+    m.getWorldPosition(_pv); _pv.project(camera);
+    if (_pv.z > 1) continue;
+    const d = Math.hypot(rc.left + (_pv.x * 0.5 + 0.5) * rc.width - e.clientX, rc.top + (-_pv.y * 0.5 + 0.5) * rc.height - e.clientY);
+    if (d < bd) { bd = d; best = m.userData.bone; }
+  }
+  return best;
+}
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane();
+const _p0 = new THREE.Vector3(), _hit = new THREE.Vector3(), _dir = new THREE.Vector3();
+function pointerRay(e) {
+  const rc = dom.getBoundingClientRect();
+  ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+}
+let press = null;
+dom.addEventListener('pointerdown', e => {
+  press = null;
+  if (!vrm || !markersVisible || !e.isPrimary || e.button > 0) return;
+  const name = pickMarker(e);
+  if (!name) return;
+  press = { name, x: e.clientX, y: e.clientY, pid: e.pointerId, started: false, moved: false, chain: null, offset: new THREE.Vector3() };
+  if (mode === 'grab') {
+    controls.enabled = false;               // 視点回転を止める
+    try { dom.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+}, true);
+dom.addEventListener('pointermove', e => {
+  if (!press || e.pointerId !== press.pid) return;
+  if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 5) press.moved = true;
+  if (mode !== 'grab' || !press.moved) return;
+  if (!press.started) {                      // ドラッグの開始
+    press.started = true;
+    selectBone(press.name);
+    press.chain = chainFor(press.name);
+    if (!press.chain) { say('この関節はつかんで動かせません。「輪で回す」か数値で調整してください'); return; }
+    const eff = vrm.humanoid.getNormalizedBoneNode(press.name);
+    vrm.scene.updateMatrixWorld(true);
+    eff.getWorldPosition(_p0);
+    camera.getWorldDirection(_dir);
+    plane.setFromNormalAndCoplanarPoint(_dir, _p0);
+    pointerRay(e);
+    if (ray.ray.intersectPlane(plane, _hit)) press.offset.copy(_p0).sub(_hit);
+  }
+  if (!press.chain) return;
+  pointerRay(e);
+  if (!ray.ray.intersectPlane(plane, _hit)) return;
+  solveIK(press.name, press.chain, _hit.add(press.offset));
+  showBone();
+});
+function endPress(e, cancel) {
+  if (!press || e.pointerId !== press.pid) return;
+  const p = press; press = null;
+  if (mode === 'grab') { controls.enabled = true; try { dom.releasePointerCapture(e.pointerId); } catch (_) {} }
+  if (p.started) { save(); syncJson(); showBone(); say('ポーズを変えました'); return; }
+  if (!cancel && !p.moved && !tcBusy) selectBone(p.name);
+}
+dom.addEventListener('pointerup', e => endPress(e, false));
+dom.addEventListener('pointercancel', e => endPress(e, true));
+
+// ---------- GLB（VRM）の読み書き ----------
+function parseGlb(buf) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 20 || dv.getUint32(0, true) !== 0x46546C67) throw new Error('GLB/VRM形式ではありません');
+  const total = Math.min(dv.getUint32(8, true), buf.byteLength);
+  const chunks = [];
+  for (let off = 12; off + 8 <= total;) {
+    const len = dv.getUint32(off, true), type = dv.getUint32(off + 4, true);
+    chunks.push({ type, data: new Uint8Array(buf, off + 8, len) });
+    off += 8 + len;
+  }
+  if (!chunks.length || chunks[0].type !== 0x4E4F534A) throw new Error('JSON部分が見つかりません');
+  return { json: JSON.parse(new TextDecoder().decode(chunks[0].data)), chunks };
+}
+function buildGlb(json, chunks) {
+  const j = new TextEncoder().encode(JSON.stringify(json));
+  const parts = [{ type: 0x4E4F534A, data: j }].concat(chunks.slice(1));
+  const pad = n => (n + 3) & ~3;
+  const total = 12 + parts.reduce((s, p) => s + 8 + pad(p.data.length), 0);
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  let off = 12;
+  parts.forEach((p, i) => {
+    const len = pad(p.data.length);
+    dv.setUint32(off, len, true); dv.setUint32(off + 4, p.type, true);
+    out.set(p.data, off + 8);
+    if (i === 0) out.fill(0x20, off + 8 + p.data.length, off + 8 + len);   // JSONの余白は空白で埋める
+    off += 8 + len;
+  });
+  return out;
+}
+function humanBoneIndices(json) {
+  const ex = json.extensions || {}, map = {};
+  if (ex.VRMC_vrm && ex.VRMC_vrm.humanoid && ex.VRMC_vrm.humanoid.humanBones) {
+    const hb = ex.VRMC_vrm.humanoid.humanBones;
+    for (const k in hb) if (hb[k] && Number.isInteger(hb[k].node)) map[k] = hb[k].node;
+  } else if (ex.VRM && ex.VRM.humanoid && Array.isArray(ex.VRM.humanoid.humanBones)) {
+    for (const b of ex.VRM.humanoid.humanBones) if (b && b.bone && Number.isInteger(b.node)) map[b.bone] = b.node;
+  }
+  return map;
+}
+
+// ---------- 読み込み ----------
 const loader = new GLTFLoader();
 loader.register(p => new VRMLoaderPlugin(p));
 
 async function loadFile(file) {
   if (!file) return;
   say('読み込み中…');
-  const buf = await file.arrayBuffer();
+  let buf;
+  try { buf = await file.arrayBuffer(); } catch (e) { say('ファイルを読めませんでした'); return; }
+  const keep = buf.slice(0);
   loader.parse(buf, '', gltf => {
     const v = gltf.userData.vrm;
     if (!v) { say('VRMファイルではありません'); return; }
     tc.detach(); markers.length = 0;
     if (vrm) { scene.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); }
     VRMUtils.rotateVRM0(v);
-    vrm = v; scene.add(vrm.scene);
+    vrm = v; origBuf = keep;
+    isV0 = !!(v.meta && v.meta.metaVersion === '0');
+    let verText = isV0 ? 'VRM 0.x' : 'VRM 1.0';
+    try {
+      const ex = parseGlb(keep).json.extensions || {};
+      if (ex.VRMC_vrm && ex.VRMC_vrm.specVersion) verText = 'VRM ' + ex.VRMC_vrm.specVersion;
+      else if (ex.VRM) verText = 'VRM 0.x' + (ex.VRM.specVersion ? '（' + ex.VRM.specVersion + '）' : '');
+    } catch (_) {}
+    $('ver').textContent = '形式: ' + verText;
     modelName = file.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|\s]+/g, '_') || 'model';
+    scene.add(vrm.scene);
     $('empty').hidden = true;
     const box = new THREE.Box3().setFromObject(vrm.scene);
     const c = box.getCenter(new THREE.Vector3()), h = Math.max(box.getSize(new THREE.Vector3()).y, 0.5);
@@ -341,7 +627,7 @@ async function loadFile(file) {
     camera.position.set(c.x, c.y + h * 0.05, c.z + h * 2.2);
     applyPose();
     buildMarkers(); selectBone(current);
-    say(file.name + ' を読み込みました');
+    say(file.name + ' を読み込みました（' + verText + '）');
   }, err => { console.error(err); say('読み込みに失敗しました'); });
 }
 const fileEl = $('file');
@@ -351,10 +637,8 @@ stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.ad
 stage.addEventListener('dragleave', () => stage.classList.remove('drag'));
 stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('drag'); loadFile(e.dataTransfer.files[0]); });
 
-// --- OBJ書き出し（スキニング済みの頂点を焼き込む） ---
-const exportBtn = $('exportObj');
+// ---------- 書き出し共通 ----------
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
 function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -362,7 +646,53 @@ function saveBlob(blob, filename) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
+function exportBase() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  const ascii = modelName.replace(/[^A-Za-z0-9_-]+/g, '').slice(0, 24) || 'vrm';
+  return `${ascii}_pose_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+}
+const exportBtn = $('exportObj'), exportVrmBtn = $('exportVrm');
+const setBusy = b => { exportBtn.disabled = exportVrmBtn.disabled = b; };
 
+// ---------- VRM書き出し（元ファイルの関節の向きだけを差し替える） ----------
+async function exportVrm() {
+  if (!vrm || !origBuf) { say('先にVRMを読み込んでください'); return; }
+  setBusy(true); say('VRMを書き出し中…');
+  try {
+    await sleep(20);
+    applyPose();
+    vrm.scene.updateMatrixWorld(true);
+    vrm.update(0);                                   // 正規化ボーンの姿勢を、元のボーンへ反映させる
+    const { json, chunks } = parseGlb(origBuf);
+    const map = humanBoneIndices(json);
+    const r8 = v => Math.round(v * 1e8) / 1e8;
+    let n = 0;
+    for (const name in map) {
+      const raw = vrm.humanoid.getRawBoneNode(name), nd = json.nodes && json.nodes[map[name]];
+      if (!raw || !nd) continue;
+      if (nd.matrix) {                               // 行列で持っているノードは移動・回転・拡大に分けてから書き換える
+        const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+        new THREE.Matrix4().fromArray(nd.matrix).decompose(p, q, s);
+        nd.translation = p.toArray(); nd.scale = s.toArray(); delete nd.matrix;
+      }
+      nd.rotation = [r8(raw.quaternion.x), r8(raw.quaternion.y), r8(raw.quaternion.z), r8(raw.quaternion.w)];
+      n++;
+    }
+    if (!n) throw new Error('人型ボーンの情報が見つかりませんでした');
+    const out = buildGlb(json, chunks);
+    const base = exportBase();
+    saveBlob(new Blob([out], { type: 'application/octet-stream' }), base + '.vrm');
+    say(`書き出しました: ${base}.vrm（${n}個の関節を更新）`);
+  } catch (e) {
+    console.error(e);
+    say('VRMの書き出しに失敗しました: ' + (e && e.message ? e.message : e));
+  } finally {
+    setBusy(false);
+  }
+}
+exportVrmBtn.onclick = exportVrm;
+
+// ---------- OBJ書き出し（ポーズ後の頂点を焼き込み、1つのZIPにまとめる） ----------
 async function texToPng(tex) {
   const img = tex.image;
   const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
@@ -371,24 +701,19 @@ async function texToPng(tex) {
   c.getContext('2d').drawImage(img, 0, 0);
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
-
 async function exportObj() {
   if (!vrm) { say('先にVRMを読み込んでください'); return; }
-  exportBtn.disabled = true; say('書き出し中…');
+  setBusy(true); say('書き出し中…');
   try {
     await sleep(20);
-    const d = new Date(), z = n => String(n).padStart(2, '0');
-    const asciiName = modelName.replace(/[^A-Za-z0-9_-]+/g, '').slice(0, 24) || 'vrm';
-    const base = `${asciiName}_pose_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+    const base = exportBase();
+    applyPose();
     vrm.update(0);
     vrm.scene.updateMatrixWorld(true);
 
-    const texFiles = new Map();   // texture.uuid -> ファイル名
-    const texBlobs = [];
-    const matNames = new Map();   // material.uuid -> 名前
-    const usedNames = new Set();
+    const texFiles = new Map(), texBlobs = [], matNames = new Map(), usedNames = new Set();
     let mtl = '';
-    const lines = [`# VRMポーズ固定から書き出し`, `mtllib ${base}.mtl`];
+    const lines = ['# VRMポーズ固定から書き出し', `mtllib ${base}.mtl`];
     let vOff = 0;
 
     const addMaterial = async m => {
@@ -441,8 +766,7 @@ async function exportObj() {
         tmp.applyMatrix4(o.matrixWorld);
         P[i * 3] = tmp.x; P[i * 3 + 1] = tmp.y; P[i * 3 + 2] = tmp.z;
       }
-      // 法線はポーズ後の形から計算し直す
-      const ng = new THREE.BufferGeometry();
+      const ng = new THREE.BufferGeometry();     // 法線はポーズ後の形から計算し直す
       ng.setAttribute('position', new THREE.BufferAttribute(P, 3));
       if (idx) ng.setIndex(idx);
       ng.computeVertexNormals();
@@ -480,12 +804,14 @@ async function exportObj() {
     console.error(e);
     say('書き出しに失敗しました: ' + (e && e.message ? e.message : e));
   } finally {
-    exportBtn.disabled = false;
+    setBusy(false);
   }
 }
 exportBtn.onclick = exportObj;
 
+setMode('grab');
 showBone(); syncJson();
+
 </script>
 </body>
 </html>
